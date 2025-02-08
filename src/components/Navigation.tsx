@@ -20,7 +20,7 @@ export function Navigation() {
             {user ? (
               <>
                 <Link to="/dashboard" className="text-gray-300 hover:text-white transition">
-                  Dashboard
+                  Profile
                 </Link>
                 <Link to="/trade" className="text-gray-300 hover:text-white transition">
                   Market
