@@ -18,7 +18,7 @@ export function Home() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
-              to="/trade"
+              to="/signup"
               className="bg-red-500 text-white px-8 py-3 rounded-lg hover:bg-red-600 transition flex items-center"
             >
               Start Trading Now
