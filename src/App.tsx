@@ -11,6 +11,7 @@ import { Social } from './pages/Social';
 import { Simulation } from './pages/Simulation';
 import { CopyTrader } from './pages/CopyTrader';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { Leaderboard } from './pages/Leaderboard';
 import { useAuth } from './context/AuthContext';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -70,6 +71,14 @@ function App() {
           element={
             <PrivateRoute>
               <Social />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/leaderboard"
+          element={
+            <PrivateRoute>
+              <Leaderboard />
             </PrivateRoute>
           }
         />

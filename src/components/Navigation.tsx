@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { TrendingUp, LogOut, PlayCircle, Shield } from 'lucide-react';
+import { TrendingUp, LogOut, PlayCircle, Shield, Trophy } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export function Navigation() {
@@ -25,12 +25,16 @@ export function Navigation() {
                 <Link to="/trade" className="text-gray-300 hover:text-white transition">
                   Market
                 </Link>
-                <Link to="/simulation" className="text-gray-300 hover:text-white transition">
+                {/* <Link to="/simulation" className="text-gray-300 hover:text-white transition">
                   <PlayCircle className="h-4 w-4 inline mr-1" />
                   Simulation
-                </Link>
+                </Link> */}
                 <Link to="/social" className="text-gray-300 hover:text-white transition">
                   Social
+                </Link>
+                <Link to="/leaderboard" className="text-gray-300 hover:text-white transition">
+                  <Trophy className="h-4 w-4 inline mr-1" />
+                  Leaderboard
                 </Link>
                 <Link to="/admin" className="text-gray-300 hover:text-white transition">
                   <Shield className="h-4 w-4 inline mr-1" />
