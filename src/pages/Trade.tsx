@@ -21,6 +21,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { CandlestickChart } from '../components/CandlestickChart';
+import StockNews from '../components/StockNews';
 
 // Mock FAANG stocks data
 const faangStocks = [
@@ -491,49 +492,11 @@ export function Trade() {
                 {/* News Tab Content */}
                 {activeTab === 'news' && (
                   <div className="space-y-6">
-                    {stockNews.map((news) => (
-                      <div key={news.id} className="bg-gray-700/30 rounded-xl overflow-hidden hover:bg-gray-700/50 transition">
-                        <div className="flex">
-                          <div className="w-48 h-48 flex-shrink-0">
-                            <img
-                              src={news.image}
-                              alt={news.title}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div className="flex-1 p-6">
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="flex-1">
-                                <h4 className="text-xl font-semibold text-white mb-2">{news.title}</h4>
-                                <p className="text-gray-300 mb-4 line-clamp-2">{news.content}</p>
-                              </div>
-                              <div className={`px-3 py-1 rounded-full text-sm ml-4 ${
-                                news.sentiment === 'positive' ? 'bg-green-500/20 text-green-400' :
-                                news.sentiment === 'negative' ? 'bg-red-500/20 text-red-400' :
-                                'bg-yellow-500/20 text-yellow-400'
-                              }`}>
-                                {news.sentiment}
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-4 text-sm">
-                                <span className="text-gray-400">{news.source}</span>
-                                <span className="text-gray-600">•</span>
-                                <span className="text-gray-400">{news.time}</span>
-                              </div>
-                              <div className={`flex items-center space-x-2 text-sm ${
-                                news.impact === 'high' ? 'text-red-400' :
-                                news.impact === 'medium' ? 'text-yellow-400' :
-                                'text-green-400'
-                              }`}>
-                                <AlertTriangle className="h-4 w-4" />
-                                <span>{news.impact} impact</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                    
+                    <div className="bg-gray-700/30 rounded-xl p-6">
+                      <h2 className="text-lg font-semibold text-white mb-4">Latest Market News</h2>
+                      <StockNews stockName={selectedStock.name} />
+                    </div>
                   </div>
                 )}
 
