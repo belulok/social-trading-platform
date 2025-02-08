@@ -157,7 +157,7 @@ const forumDiscussions = [
     id: '2',
     author: {
       name: "Emma Wilson",
-      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
+      avatar: "https://images.unsplash.com/photo-1534528741775-b48cc8e92a4d?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
       reputation: 4.5
     },
     title: "Bitcoin's Correlation with Tech Stocks",
@@ -265,7 +265,7 @@ export function Trade() {
         const aiPredictions = Array.from({ length: 30 }, (_, i) => {
           const date = new Date(futureStartDate);
           date.setDate(date.getDate() + i);
-          const predictedPrice = data.c * (1 + (Math.sin(i * 0.2) * 0.05) + (i * 0.001)); // Slight upward trend
+          const predictedPrice = i === 0 ? data.c : data.c * (1 + (Math.sin(i * 0.2) * 0.05) + (i * 0.001)); // Start from current price
           return {
             time: date.toISOString().split('T')[0],
             value: Number(predictedPrice.toFixed(2))
@@ -276,7 +276,7 @@ export function Trade() {
         const trader1Predictions = Array.from({ length: 30 }, (_, i) => {
           const date = new Date(futureStartDate);
           date.setDate(date.getDate() + i);
-          const predictedPrice = data.c * (1 + (Math.sin((i + 2) * 0.2) * 0.06) + (i * 0.002)); // More optimistic
+          const predictedPrice = i === 0 ? data.c : data.c * (1 + (Math.sin((i + 2) * 0.2) * 0.06) + (i * 0.002)); // Start from current price
           return {
             time: date.toISOString().split('T')[0],
             value: Number(predictedPrice.toFixed(2))
@@ -286,7 +286,7 @@ export function Trade() {
         const trader2Predictions = Array.from({ length: 30 }, (_, i) => {
           const date = new Date(futureStartDate);
           date.setDate(date.getDate() + i);
-          const predictedPrice = data.c * (1 + (Math.cos(i * 0.15) * 0.04) - (i * 0.0005)); // Slightly bearish
+          const predictedPrice = i === 0 ? data.c : data.c * (1 + (Math.cos(i * 0.15) * 0.04) - (i * 0.0005)); // Start from current price
           return {
             time: date.toISOString().split('T')[0],
             value: Number(predictedPrice.toFixed(2))
@@ -296,7 +296,7 @@ export function Trade() {
         const trader3Predictions = Array.from({ length: 30 }, (_, i) => {
           const date = new Date(futureStartDate);
           date.setDate(date.getDate() + i);
-          const predictedPrice = data.c * (1 + (Math.sin((i - 2) * 0.25) * 0.03) + (i * 0.0008)); // Moderate bullish
+          const predictedPrice = i === 0 ? data.c : data.c * (1 + (Math.sin((i - 2) * 0.25) * 0.03) + (i * 0.0008)); // Start from current price
           return {
             time: date.toISOString().split('T')[0],
             value: Number(predictedPrice.toFixed(2))

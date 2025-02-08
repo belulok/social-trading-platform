@@ -8,6 +8,7 @@ interface NewsItem {
   date: string;
   image?: string;
   isDummy?: boolean;
+  sentiment: 'positive' | 'negative' | 'neutral';
 }
 
 interface StockNewsProps {
@@ -52,7 +53,8 @@ const StockNews = ({ stockName }: StockNewsProps) => {
           source: item.source_id || 'Unknown Source',
           date: new Date(item.pubDate).toLocaleDateString(),
           image: item.image_url,
-          isDummy: false
+          isDummy: false,
+          sentiment: analyzeSentiment(item.title + ' ' + (item.description || ''))
         }));
         setNewsItems(processedNews);
       } else {
@@ -64,6 +66,27 @@ const StockNews = ({ stockName }: StockNewsProps) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const analyzeSentiment = (text: string): 'positive' | 'negative' | 'neutral' => {
+    const positiveWords = ['up', 'rise', 'gain', 'growth', 'profit', 'success', 'positive', 'surge', 'rally', 'boost', 'strong', 'bullish'];
+    const negativeWords = ['down', 'fall', 'loss', 'decline', 'drop', 'negative', 'weak', 'bearish', 'crash', 'risk', 'concern'];
+    
+    const lowerText = text.toLowerCase();
+    let positiveCount = 0;
+    let negativeCount = 0;
+    
+    positiveWords.forEach(word => {
+      if (lowerText.includes(word)) positiveCount++;
+    });
+    
+    negativeWords.forEach(word => {
+      if (lowerText.includes(word)) negativeCount++;
+    });
+    
+    if (positiveCount > negativeCount) return 'positive';
+    if (negativeCount > positiveCount) return 'negative';
+    return 'neutral';
   };
 
   useEffect(() => {
@@ -104,16 +127,25 @@ const StockNews = ({ stockName }: StockNewsProps) => {
                   </div>
                 )}
                 <div className="flex-grow min-w-0">
-                  <a 
-                    href={item.link} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="block group"
-                  >
-                    <h3 className="font-medium text-white group-hover:text-blue-400 transition-colors mb-2 line-clamp-2">
-                      {item.title}
-                    </h3>
-                  </a>
+                  <div className="flex items-center justify-between mb-2">
+                    <a 
+                      href={item.link} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="block group flex-1"
+                    >
+                      <h3 className="font-medium text-white group-hover:text-blue-400 transition-colors line-clamp-2">
+                        {item.title}
+                      </h3>
+                    </a>
+                    <div className={`px-3 py-1 rounded-full text-sm ml-4 ${
+                      item.sentiment === 'positive' ? 'bg-green-500/20 text-green-400' :
+                      item.sentiment === 'negative' ? 'bg-red-500/20 text-red-400' :
+                      'bg-yellow-500/20 text-yellow-400'
+                    }`}>
+                      {item.sentiment}
+                    </div>
+                  </div>
                   <p className="text-sm text-gray-400 mb-2 line-clamp-2">
                     {item.snippet}
                   </p>
