@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Bot, Maximize2, Minimize2, Loader2 } from 'lucide-react';
+import { Send, Bot, Minimize2, Loader2 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
 interface Message {
@@ -9,6 +9,8 @@ interface Message {
   timestamp: Date;
 }
 
+const DEEPSEEK_API_URL = 'https://f1a0-43-252-217-181.ngrok-free.app';
+
 export function AIChatSidebar() {
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem('aiChatSidebarOpen');
@@ -17,13 +19,62 @@ export function AIChatSidebar() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isApiError, setIsApiError] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [position, setPosition] = useState(0);
 
   useEffect(() => {
     localStorage.setItem('aiChatSidebarOpen', JSON.stringify(isOpen));
   }, [isOpen]);
+
+  useEffect(() => {
+    // Initial 2-second interval
+    let currentInterval = 2000;
+    
+    const moveIcon = () => {
+      setPosition(Math.random() * 20 - 10);
+      setTimeout(() => setPosition(0), 1000);
+    };
+
+    let interval = setInterval(moveIcon, currentInterval);
+
+    setTimeout(() => {
+      clearInterval(interval);
+      currentInterval = 5000;
+      interval = setInterval(moveIcon, currentInterval);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const getInitialMessage = () => {
+      switch (location.pathname) {
+        case '/dashboard':
+          return "I can help you analyze your trading performance and suggest improvements. What would you like to know about your portfolio?";
+        case '/trade':
+          return "I can assist with market analysis, risk assessment, and trading strategies. What would you like to know about the current market?";
+        case '/social':
+          return "I can help you find suitable traders to follow and analyze their performance. What type of trading style are you interested in?";
+        case '/':
+        case '/profile':
+          return "Welcome! I'm your AI trading assistant. How can I help you today?";
+        default:
+          return "How can I assist you with your trading today?";
+      }
+    };
+
+    // Always show initial message when route changes
+    const initialMessage = {
+      id: Date.now().toString(),
+      type: 'ai' as const,
+      content: getInitialMessage(),
+      timestamp: new Date()
+    };
+    setMessages([initialMessage]);
+  }, [location.pathname]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -33,43 +84,17 @@ export function AIChatSidebar() {
     scrollToBottom();
   }, [messages]);
 
-  useEffect(() => {
-    if (messages.length > 0) {
-      localStorage.setItem('aiChatMessages', JSON.stringify(messages));
+  const getFallbackResponse = (userInput: string, path: string) => {
+    const input = userInput.toLowerCase();
+    
+    if (path === '/dashboard' && input.includes('performance')) {
+      return "I apologize, but I'm currently having trouble connecting to get the latest data. However, I can help you analyze your trading performance once the connection is restored.";
     }
-  }, [messages]);
-
-  useEffect(() => {
-    const savedMessages = localStorage.getItem('aiChatMessages');
-    if (savedMessages) {
-      const parsedMessages = JSON.parse(savedMessages).map((msg: any) => ({
-        ...msg,
-        timestamp: new Date(msg.timestamp)
-      }));
-      setMessages(parsedMessages);
-      return;
+    if (path === '/trade' && input.includes('market')) {
+      return "I'm currently unable to fetch real-time market data. Please try again in a few moments, or you can check your trading platform directly for the latest market information.";
     }
-
-    const getInitialMessage = () => {
-      switch (location.pathname) {
-        case '/dashboard':
-          return "I can help you analyze your trading performance and suggest improvements. What would you like to know about your portfolio?";
-        case '/trade':
-          return "I can assist with market analysis, risk assessment, and trading strategies. What would you like to know about the current market?";
-        case '/social':
-          return "I can help you find suitable traders to follow and analyze their performance. What type of trading style are you interested in?";
-        default:
-          return "How can I assist you with your trading today?";
-      }
-    };
-
-    setMessages([{
-      id: '1',
-      type: 'ai',
-      content: getInitialMessage(),
-      timestamp: new Date()
-    }]);
-  }, [location.pathname]);
+    return "I apologize, but I'm having trouble connecting to our AI service at the moment. Please try again in a few moments. Is there anything specific you'd like to know about once the service is back up?";
+  };
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -77,63 +102,99 @@ export function AIChatSidebar() {
     const userMessage: Message = {
       id: Date.now().toString(),
       type: 'user',
-      content: input,
+      content: input.trim(),
       timestamp: new Date()
     };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsTyping(true);
 
-    setTimeout(() => {
-      const aiResponse = getContextAwareResponse(input, location.pathname);
+    try {
+      const response = await fetch(DEEPSEEK_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: input.trim(),
+          context: location.pathname
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API response not ok: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setIsApiError(false);
+      
       setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
+        id: Date.now().toString(),
         type: 'ai',
-        content: aiResponse,
+        content: data.response,
         timestamp: new Date()
       }]);
+    } catch (error) {
+      setIsApiError(true);
+      
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        type: 'ai',
+        content: getFallbackResponse(input, location.pathname),
+        timestamp: new Date()
+      }]);
+    } finally {
       setIsTyping(false);
-    }, 1000);
+    }
   };
 
-  const getContextAwareResponse = (userInput: string, path: string) => {
-    const input = userInput.toLowerCase();
-    
-    if (path === '/dashboard') {
-      if (input.includes('performance')) {
-        return "Your trading performance has been strong with a 64% win rate. Your best performing strategy is trend following with major currency pairs. Would you like specific recommendations for improvement?";
-      }
-      if (input.includes('risk')) {
-        return "Your current risk metrics are within healthy ranges. Your max drawdown is 15.3% and your risk-reward ratio averages 1:2.5. Consider setting tighter stop losses on volatile pairs.";
-      }
-    }
-    
-    if (path === '/trade') {
-      if (input.includes('analysis')) {
-        return "Based on current market conditions, BTC/USD shows strong support at $47,200. Key resistance levels are at $48,500 and $49,200. RSI indicates slightly overbought conditions.";
-      }
-      if (input.includes('strategy')) {
-        return "Given the current trend and volatility, a breakout strategy might be effective. Consider waiting for a clear break above $48,500 with volume confirmation.";
-      }
-    }
-    
-    if (path === '/social') {
-      if (input.includes('recommend')) {
-        return "Based on your trading style, I recommend following Jacynth Tham. She has a similar risk profile and consistently outperforms the market with a 78% win rate.";
-      }
-      if (input.includes('compare')) {
-        return "Compared to your trading style, Alex Thompson takes more aggressive positions but has better risk management. His strategies might complement your portfolio.";
-      }
-    }
-    
-    return "I understand you're asking about " + userInput + ". Could you please provide more specific details about what you'd like to know?";
+  const toggleChat = () => {
+    setIsOpen(!isOpen);
+    localStorage.setItem('aiChatSidebarOpen', JSON.stringify(!isOpen));
+  };
+
+  const styles = {
+    minimizedChat: {
+      position: 'fixed',
+      bottom: '20px',
+      right: '20px',
+      width: '50px',
+      height: '50px',
+      borderRadius: '50%',
+      backgroundColor: '#007bff',
+      boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+      transform: `translateX(${position}px)`,
+      '&:hover': {
+        transform: `translateX(${position}px) scale(1.1)`,
+      },
+    },
+    chatIcon: {
+      width: '24px',
+      height: '28px',
+      animation: 'float 6s ease-in-out infinite',
+      '@keyframes float': {
+        '0%, 100%': { 
+          transform: 'translateY(0)',
+          animationTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+        },
+        '50%': { 
+          transform: 'translateY(-15px)',
+          animationTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
+        },
+      },
+    },
   };
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === '/') {
         e.preventDefault();
-        setIsOpen(prev => !prev);
+        toggleChat();
         if (!isOpen) {
           setTimeout(() => inputRef.current?.focus(), 100);
         }
@@ -144,12 +205,31 @@ export function AIChatSidebar() {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [isOpen]);
 
+  if (!isOpen) {
+    return (
+      <div 
+        style={{
+          ...styles.minimizedChat,
+          zIndex: 1000, // Ensure it's above other elements
+        }}
+        onClick={toggleChat}
+      >
+        <div style={styles.chatIcon}>
+          <Bot className="h-6 w-6 text-white" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div 
-      className={`fixed right-0 top-0 bottom-0 bg-gray-800/95 backdrop-blur-sm border-l border-gray-700/50 transition-all duration-300 z-50 ${
-        isOpen ? 'w-96' : 'w-12'
-      }`}
-      style={{ marginTop: '5rem' }}
+      className={`fixed right-0 bottom-0 bg-gray-800/95 backdrop-blur-sm border-l border-gray-700/50 z-[1000]`}
+      style={{
+        height: isOpen ? 'calc(100vh - 5rem)' : '50px',
+        width: isOpen ? '384px' : '50px',
+        transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+        transformOrigin: 'bottom',
+      }}
     >
       <div className="flex flex-col h-full">
         {/* Header */}
@@ -161,7 +241,7 @@ export function AIChatSidebar() {
                 <h3 className="text-lg font-semibold text-white">AI Assistant</h3>
               </div>
               <button
-                onClick={() => setIsOpen(false)}
+                onClick={toggleChat}
                 className="text-gray-400 hover:text-white transition"
                 title="Close sidebar (Ctrl + /)"
               >
@@ -170,17 +250,18 @@ export function AIChatSidebar() {
             </>
           ) : (
             <button
-              onClick={() => setIsOpen(true)}
+              onClick={toggleChat}
               className="text-gray-400 hover:text-white transition"
               title="Open sidebar (Ctrl + /)"
             >
-              <Maximize2 className="h-5 w-5" />
+              <Minimize2 className="h-5 w-5" />
             </button>
           )}
         </div>
 
         {isOpen && (
           <>
+
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4">
               <div className="space-y-4">
