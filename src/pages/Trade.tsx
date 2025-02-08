@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LineChart as LineChartIcon, 
   ArrowUpRight, 
@@ -168,86 +168,149 @@ const forumDiscussions = [
   }
 ];
 
+interface ChartData {
+  time: string;
+  open?: number;
+  high?: number;
+  low?: number;
+  close?: number;
+  value?: number;
+}
+
 export function Trade() {
   const [amount, setAmount] = useState('1000');
   const [leverage, setLeverage] = useState('10');
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [timeframe, setTimeframe] = useState('1M');
   const [activeTab, setActiveTab] = useState('news');
-  const [selectedStock] = useState({
-    symbol: 'BTC/USD',
-    name: 'Bitcoin / US Dollar',
-    price: 48235.50
+  const [selectedStock, setSelectedStock] = useState({
+    symbol: 'AAPL',
+    name: 'Apple Inc.',
+    price: 0,
+    change: 0,
+    changePercent: 0
   });
 
+  const [chartData, setChartData] = useState<{
+    historical: ChartData[];
+    aiPrediction: ChartData[];
+    trader1: ChartData[];
+    trader2: ChartData[];
+    trader3: ChartData[];
+  } | null>(null);
+
+  useEffect(() => {
+    // Fetch data once when component mounts
+    getCandlestickData().then(data => {
+      setChartData(data);
+      // Update selected stock price with the latest data
+      fetch('https://finnhub.io/api/v1/quote?symbol=AAPL&token=cujqorhr01qgs4826fb0cujqorhr01qgs4826fbg')
+        .then(response => response.json())
+        .then(quoteData => {
+          setSelectedStock({
+            symbol: 'AAPL',
+            name: 'Apple Inc.',
+            price: quoteData.c,
+            change: quoteData.d,
+            changePercent: quoteData.dp
+          });
+        });
+    });
+  }, []);
+
   const getCandlestickData = () => {
-    const days = timeframe === '1M' ? 30 : 
-                timeframe === '3M' ? 90 : 
-                timeframe === '6M' ? 180 : 
-                timeframe === '1Y' ? 365 : 3650;
+    return fetch(`https://finnhub.io/api/v1/quote?symbol=AAPL&token=cujqorhr01qgs4826fb0cujqorhr01qgs4826fbg`)
+      .then(response => response.json())
+      .then(data => {
+        const currentDate = new Date();
+        const startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - 1); // Start from 1 month ago
 
-    // Historical data (60% of timeframe)
-    const historicalData = Array.from({ length: Math.floor(days * 0.6) }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (days - i));
-      const basePrice = selectedStock.price * (1 + Math.sin(i * 0.1) * 0.1);
-      const volatility = basePrice * 0.02;
-      
-      return {
-        time: date.toISOString().split('T')[0],
-        open: basePrice - volatility * Math.random(),
-        high: basePrice + volatility,
-        low: basePrice - volatility,
-        close: basePrice + volatility * Math.random(),
-      };
-    });
+        // Generate 1 month of historical data starting from a reasonable past price
+        const historicalData = [];
+        let currentPrice = data.c;
+        
+        for (let i = 30; i >= 0; i--) { // Generate 30 days backwards from current price
+          const date = new Date(currentDate);
+          date.setDate(date.getDate() - i);
+          
+          // Add some realistic daily price movements (0.5-2% daily change)
+          const dailyChange = (Math.random() - 0.5) * 0.02; // -1% to +1% change
+          const volatility = currentPrice * 0.01; // 1% volatility
+          
+          const dayClose = i === 0 ? data.c : currentPrice * (1 + dailyChange);
+          const dayOpen = dayClose * (1 + (Math.random() - 0.5) * 0.01);
+          const dayHigh = Math.max(dayOpen, dayClose) * (1 + Math.random() * 0.005);
+          const dayLow = Math.min(dayOpen, dayClose) * (1 - Math.random() * 0.005);
 
-    // Get the last closing price to use as base for predictions
-    const lastClose = historicalData[historicalData.length - 1].close;
-    const trendFactor = 0.15; // Upward trend factor
+          historicalData.push({
+            time: date.toISOString().split('T')[0],
+            open: Number(dayOpen.toFixed(2)),
+            high: Number(dayHigh.toFixed(2)),
+            low: Number(dayLow.toFixed(2)),
+            close: Number(dayClose.toFixed(2))
+          });
 
-    // AI Prediction (40% of timeframe) - Following trend with slight variations
-    const predictiveData = Array.from({ length: Math.floor(days * 0.4) }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() + i);
-      // Create an upward trend with some oscillation
-      const basePrice = lastClose * (1 + (i / (days * 0.4)) * trendFactor + Math.sin(i * 0.1) * 0.05);
-      const volatility = basePrice * 0.015;
-      
-      return {
-        time: date.toISOString().split('T')[0],
-        open: basePrice - volatility * Math.random(),
-        high: basePrice + volatility,
-        low: basePrice - volatility,
-        close: basePrice + volatility * Math.random(),
-      };
-    });
+          if (i !== 0) { // Don't update price for the last day (current)
+            currentPrice = dayClose;
+          }
+        }
 
-    // Community Prediction (40% of timeframe) - Similar trend but with different variations
-    const communityData = Array.from({ length: Math.floor(days * 0.4) }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() + i);
-      // Follow similar trend but with different oscillation pattern
-      const basePrice = lastClose * (1 + (i / (days * 0.4)) * trendFactor + Math.cos(i * 0.15) * 0.03);
-      const volatility = basePrice * 0.02;
-      
-      return {
-        time: date.toISOString().split('T')[0],
-        open: basePrice - volatility * Math.random(),
-        high: basePrice + volatility,
-        low: basePrice - volatility,
-        close: basePrice + volatility * Math.random(),
-      };
-    });
+        // Generate future predictions for 30 days
+        const futureStartDate = new Date(currentDate);
+        futureStartDate.setDate(futureStartDate.getDate() + 1);
 
-    return {
-      historical: historicalData,
-      predictive: predictiveData,
-      community: communityData
-    };
+        // Main AI prediction (purple line)
+        const aiPredictions = Array.from({ length: 30 }, (_, i) => {
+          const date = new Date(futureStartDate);
+          date.setDate(date.getDate() + i);
+          const predictedPrice = data.c * (1 + (Math.sin(i * 0.2) * 0.05) + (i * 0.001)); // Slight upward trend
+          return {
+            time: date.toISOString().split('T')[0],
+            value: Number(predictedPrice.toFixed(2))
+          };
+        });
+
+        // Copy trader predictions
+        const trader1Predictions = Array.from({ length: 30 }, (_, i) => {
+          const date = new Date(futureStartDate);
+          date.setDate(date.getDate() + i);
+          const predictedPrice = data.c * (1 + (Math.sin((i + 2) * 0.2) * 0.06) + (i * 0.002)); // More optimistic
+          return {
+            time: date.toISOString().split('T')[0],
+            value: Number(predictedPrice.toFixed(2))
+          };
+        });
+
+        const trader2Predictions = Array.from({ length: 30 }, (_, i) => {
+          const date = new Date(futureStartDate);
+          date.setDate(date.getDate() + i);
+          const predictedPrice = data.c * (1 + (Math.cos(i * 0.15) * 0.04) - (i * 0.0005)); // Slightly bearish
+          return {
+            time: date.toISOString().split('T')[0],
+            value: Number(predictedPrice.toFixed(2))
+          };
+        });
+
+        const trader3Predictions = Array.from({ length: 30 }, (_, i) => {
+          const date = new Date(futureStartDate);
+          date.setDate(date.getDate() + i);
+          const predictedPrice = data.c * (1 + (Math.sin((i - 2) * 0.25) * 0.03) + (i * 0.0008)); // Moderate bullish
+          return {
+            time: date.toISOString().split('T')[0],
+            value: Number(predictedPrice.toFixed(2))
+          };
+        });
+
+        return {
+          historical: historicalData,
+          aiPrediction: aiPredictions,
+          trader1: trader1Predictions,
+          trader2: trader2Predictions,
+          trader3: trader3Predictions
+        };
+      });
   };
-
-  const chartData = getCandlestickData();
 
   return (
     <div className="min-h-screen bg-gray-900 pt-20">
@@ -302,8 +365,15 @@ export function Trade() {
             <div className="bg-gray-800 rounded-xl p-6 mb-8">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-white">{selectedStock.symbol}</h2>
-                  <p className="text-gray-400">{selectedStock.name}</p>
+                  <h2 className="text-2xl font-bold text-white">{selectedStock.name}</h2>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-semibold text-white">
+                      ${selectedStock.price?.toFixed(2)}
+                    </span>
+                    <span className={`text-sm ${selectedStock.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                      {selectedStock.change >= 0 ? '+' : ''}{selectedStock.change?.toFixed(2)} ({selectedStock.change >= 0 ? '+' : ''}{selectedStock.changePercent?.toFixed(2)}%)
+                    </span>
+                  </div>
                 </div>
                 <div className="flex items-center space-x-4">
                   <select 
@@ -326,30 +396,38 @@ export function Trade() {
                   </button>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-white">${selectedStock.price.toLocaleString()}</p>
-                    <p className="text-green-500">+2.5% (24h)</p>
+                    <p className={`text-${selectedStock.changePercent >= 0 ? 'green-500' : 'red-500'}`}>{selectedStock.changePercent >= 0 ? '+' : ''}{selectedStock.changePercent}% (24h)</p>
                   </div>
                 </div>
               </div>
               <div className="h-[600px]">
-                <CandlestickChart 
-                  data={chartData.historical}
-                  predictiveData={chartData.predictive}
-                  communityData={chartData.community}
-                />
+                {chartData && (
+                  <CandlestickChart 
+                    getData={() => Promise.resolve(chartData)}
+                  />
+                )}
               </div>
               {/* Legend */}
-              <div className="flex items-center justify-center space-x-6 mt-4">
+              <div className="flex gap-4 mt-4 justify-center">
                 <div className="flex items-center">
-                  <div className="w-3 h-3 bg-white rounded-full mr-2"></div>
-                  <span className="text-gray-400">Actual</span>
+                  <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                  <span className="text-gray-400">Current Price</span>
                 </div>
                 <div className="flex items-center">
                   <div className="w-3 h-3 bg-purple-500 rounded-full mr-2"></div>
                   <span className="text-gray-400">AI Prediction</span>
                 </div>
                 <div className="flex items-center">
-                  <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                  <span className="text-gray-400">Community Prediction</span>
+                  <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
+                  <span className="text-gray-400">Copy Trader 1</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                  <span className="text-gray-400">Copy Trader 2</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+                  <span className="text-gray-400">Copy Trader 3</span>
                 </div>
               </div>
             </div>

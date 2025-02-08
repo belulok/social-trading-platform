@@ -9,7 +9,7 @@ interface Message {
   timestamp: Date;
 }
 
-const DEEPSEEK_API_URL = 'https://f1a0-43-252-217-181.ngrok-free.app';
+const DEEPSEEK_API_URL = 'https://f1a0-43-252-217-181.ngrok-free.app/api/generate';
 
 export function AIChatSidebar() {
   const [isOpen, setIsOpen] = useState(() => {
@@ -116,8 +116,9 @@ export function AIChatSidebar() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: input.trim(),
-          context: location.pathname
+          model: "deepseek-r1:1.5b",
+          prompt: input.trim(),
+          stream: false
         })
       });
       

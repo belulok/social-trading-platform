@@ -1,26 +1,34 @@
-import React, { useEffect, useRef } from 'react';
-import { createChart, ColorType, IChartApi, ISeriesApi } from 'lightweight-charts';
+import React, { useEffect, useRef, useState } from 'react';
+import { createChart, ColorType, IChartApi, ISeriesApi, LineStyle } from 'lightweight-charts';
 
-interface CandlestickData {
+interface ChartData {
   time: string;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
+  open?: number;
+  high?: number;
+  low?: number;
+  close?: number;
+  value?: number;
 }
 
 interface CandlestickChartProps {
-  data: CandlestickData[];
-  predictiveData?: CandlestickData[];
-  communityData?: CandlestickData[];
+  getData: () => Promise<{
+    historical: ChartData[];
+    aiPrediction: ChartData[];
+    trader1: ChartData[];
+    trader2: ChartData[];
+    trader3: ChartData[];
+  }>;
 }
 
-export function CandlestickChart({ data, predictiveData, communityData }: CandlestickChartProps) {
+export function CandlestickChart({ getData }: CandlestickChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
-  const aiSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
-  const communitySeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const aiPredictionRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const trader1Ref = useRef<ISeriesApi<"Line"> | null>(null);
+  const trader2Ref = useRef<ISeriesApi<"Line"> | null>(null);
+  const trader3Ref = useRef<ISeriesApi<"Line"> | null>(null);
+  const [isHovering, setIsHovering] = useState(false);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -47,105 +55,116 @@ export function CandlestickChart({ data, predictiveData, communityData }: Candle
         vertLine: {
           color: 'rgba(255, 255, 255, 0.4)',
           width: 1,
-          style: 3,
+          style: LineStyle.Dotted,
         },
         horzLine: {
           color: 'rgba(255, 255, 255, 0.4)',
           width: 1,
-          style: 3,
+          style: LineStyle.Dotted,
         },
       },
       handleScroll: true,
       handleScale: true,
     });
 
-    // Add historical candlestick series
-    const candlestickSeries = chart.addCandlestickSeries({
+    chartRef.current = chart;
+
+    // Add candlestick series for current price
+    const candleSeries = chart.addCandlestickSeries({
       upColor: '#22c55e',
       downColor: '#ef4444',
       borderVisible: false,
       wickUpColor: '#22c55e',
       wickDownColor: '#ef4444',
     });
+    candleSeriesRef.current = candleSeries;
 
-    // Format dates and ensure ascending order
-    const formattedData = data
-      .map(item => ({
-        ...item,
-        time: item.time.split('T')[0]
-      }))
-      .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+    // Add AI prediction series (purple)
+    const aiSeries = chart.addLineSeries({
+      color: '#a855f7',
+      lineWidth: 2,
+      lineStyle: LineStyle.Dashed,
+    });
+    aiPredictionRef.current = aiSeries;
 
-    candlestickSeries.setData(formattedData);
-    candlestickSeriesRef.current = candlestickSeries;
+    // Add trader series (initially gray)
+    const trader1Series = chart.addLineSeries({
+      color: 'rgba(128, 128, 128, 0.5)',
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+    });
+    trader1Ref.current = trader1Series;
 
-    // Add AI prediction series if available
-    if (predictiveData && predictiveData.length > 0) {
-      const aiSeries = chart.addCandlestickSeries({
-        upColor: 'rgba(147, 51, 234, 0.8)',
-        downColor: 'rgba(147, 51, 234, 0.8)',
-        borderVisible: false,
-        wickUpColor: 'rgba(147, 51, 234, 0.8)',
-        wickDownColor: 'rgba(147, 51, 234, 0.8)',
-      });
+    const trader2Series = chart.addLineSeries({
+      color: 'rgba(128, 128, 128, 0.5)',
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+    });
+    trader2Ref.current = trader2Series;
 
-      const formattedPredictiveData = predictiveData
-        .map(item => ({
-          ...item,
-          time: item.time.split('T')[0]
-        }))
-        .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+    const trader3Series = chart.addLineSeries({
+      color: 'rgba(128, 128, 128, 0.5)',
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+    });
+    trader3Ref.current = trader3Series;
 
-      aiSeries.setData(formattedPredictiveData);
-      aiSeriesRef.current = aiSeries;
-    }
+    // Add hover effects for trader lines
+    chartContainerRef.current.addEventListener('mouseover', () => {
+      setIsHovering(true);
+      if (trader1Ref.current) trader1Ref.current.applyOptions({ color: '#eab308' }); // yellow
+      if (trader2Ref.current) trader2Ref.current.applyOptions({ color: '#ef4444' }); // red
+      if (trader3Ref.current) trader3Ref.current.applyOptions({ color: '#3b82f6' }); // blue
+    });
 
-    // Add community prediction series if available
-    if (communityData && communityData.length > 0) {
-      const communitySeries = chart.addCandlestickSeries({
-        upColor: 'rgba(34, 197, 94, 0.8)',
-        downColor: 'rgba(34, 197, 94, 0.8)',
-        borderVisible: false,
-        wickUpColor: 'rgba(34, 197, 94, 0.8)',
-        wickDownColor: 'rgba(34, 197, 94, 0.8)',
-      });
+    chartContainerRef.current.addEventListener('mouseout', () => {
+      setIsHovering(false);
+      if (trader1Ref.current) trader1Ref.current.applyOptions({ color: 'rgba(128, 128, 128, 0.5)' });
+      if (trader2Ref.current) trader2Ref.current.applyOptions({ color: 'rgba(128, 128, 128, 0.5)' });
+      if (trader3Ref.current) trader3Ref.current.applyOptions({ color: 'rgba(128, 128, 128, 0.5)' });
+    });
 
-      const formattedCommunityData = communityData
-        .map(item => ({
-          ...item,
-          time: item.time.split('T')[0]
-        }))
-        .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+    // Initial data fetch
+    updateChartData();
 
-      communitySeries.setData(formattedCommunityData);
-      communitySeriesRef.current = communitySeries;
-    }
-
-    chartRef.current = chart;
-
-    // Fit content
-    chart.timeScale().fitContent();
-
-    // Handle resize
-    const handleResize = () => {
-      if (chartContainerRef.current && chartRef.current) {
-        chartRef.current.applyOptions({
-          width: chartContainerRef.current.clientWidth,
-          height: chartContainerRef.current.clientHeight,
-        });
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    // Cleanup
     return () => {
-      window.removeEventListener('resize', handleResize);
-      if (chartRef.current) {
-        chartRef.current.remove();
-      }
+      chart.remove();
     };
-  }, [data, predictiveData, communityData]);
+  }, []);
+
+  const updateChartData = async () => {
+    const data = await getData();
+    
+    if (candleSeriesRef.current && data.historical) {
+      candleSeriesRef.current.setData(data.historical);
+    }
+
+    if (aiPredictionRef.current && data.aiPrediction) {
+      aiPredictionRef.current.setData(data.aiPrediction);
+    }
+
+    if (trader1Ref.current && data.trader1) {
+      trader1Ref.current.setData(data.trader1);
+    }
+
+    if (trader2Ref.current && data.trader2) {
+      trader2Ref.current.setData(data.trader2);
+    }
+
+    if (trader3Ref.current && data.trader3) {
+      trader3Ref.current.setData(data.trader3);
+    }
+
+    if (chartRef.current) {
+      chartRef.current.timeScale().fitContent();
+    }
+  };
+
+  // Update data periodically
+  useEffect(() => {
+    const interval = setInterval(updateChartData, 5000); // Update every 5 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   return <div ref={chartContainerRef} className="w-full h-full" />;
 }
