@@ -14,7 +14,7 @@ export function Navigation() {
         <div className="flex items-center justify-between">
           <Link to={user ? '/dashboard' : '/'} className="flex items-center">
             <TrendingUp className="h-8 w-8 text-red-500" />
-            <span className="ml-2 text-2xl font-bold text-white">TradeTogether</span>
+            <span className="ml-2 text-2xl font-bold text-white">HiveTrade</span>
           </Link>
           <div className="hidden md:flex items-center space-x-8">
             {user ? (
