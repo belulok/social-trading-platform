@@ -173,7 +173,7 @@ export function Trade() {
   const [leverage, setLeverage] = useState('10');
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [timeframe, setTimeframe] = useState('1M');
-  const [activeTab, setActiveTab] = useState('news');
+  const [activeTab, setActiveTab] = useState('forum');
   const [selectedStock] = useState({
     symbol: 'BTC/USD',
     name: 'Bitcoin / US Dollar',
@@ -359,18 +359,18 @@ export function Trade() {
               <div className="border-b border-gray-700">
                 <div className="flex space-x-8 px-6">
                   <button
-                    onClick={() => setActiveTab('news')}
+                    onClick={() => setActiveTab('forum')}
                     className={`py-4 relative ${
-                      activeTab === 'news'
+                      activeTab === 'forum'
                         ? 'text-white'
                         : 'text-gray-400 hover:text-white'
                     }`}
                   >
                     <div className="flex items-center space-x-2">
                       <Newspaper className="h-5 w-5" />
-                      <span>AI Analysis</span>
+                      <span>Discussion</span>
                     </div>
-                    {activeTab === 'news' && (
+                    {activeTab === 'forum' && (
                       <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500" />
                     )}
                   </button>
@@ -391,18 +391,18 @@ export function Trade() {
                     )}
                   </button>
                   <button
-                    onClick={() => setActiveTab('forum')}
+                    onClick={() => setActiveTab('news')}
                     className={`py-4 relative ${
-                      activeTab === 'forum'
+                      activeTab === 'news'
                         ? 'text-white'
                         : 'text-gray-400 hover:text-white'
                     }`}
                   >
                     <div className="flex items-center space-x-2">
                       <MessageSquare className="h-5 w-5" />
-                      <span>Discussion</span>
+                      <span>AI Analysis</span>
                     </div>
-                    {activeTab === 'forum' && (
+                    {activeTab === 'news' && (
                       <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500" />
                     )}
                   </button>
