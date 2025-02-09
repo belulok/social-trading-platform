@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Users, Award, TrendingUp, AlertTriangle, History } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
@@ -29,6 +29,7 @@ ChartJS.register(
 
 export function CopyTrader() {
   const { id } = useParams();
+  const [showModal, setShowModal] = useState(false);
 
   // Scroll to top on mount
   useEffect(() => {
@@ -154,7 +155,10 @@ export function CopyTrader() {
                 <p className="mt-2 text-gray-300 max-w-2xl">{trader.description}</p>
               </div>
             </div>
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg transition">
+            <button 
+              onClick={() => setShowModal(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg transition"
+            >
               Copy Trader
             </button>
           </div>
@@ -259,6 +263,52 @@ export function CopyTrader() {
           </div>
         </div>
       </div>
+
+      {/* Copy Trader Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 max-w-md w-full mx-4">
+            <h3 className="text-xl font-semibold text-white mb-4">Copy Trade Analysis</h3>
+            <div className="text-gray-300 mb-6 space-y-4">
+              <div className="font-medium">
+                Trader: {trader.name}
+                <br />
+                Asset: BTC/USDT
+                <br />
+                Position Size: $1,000
+                <br />
+                Stop-Loss Level: -5%
+              </div>
+              
+              <div className="border-t border-gray-700 pt-4">
+                <div className="font-semibold text-white mb-2"> AI-Adjusted Trade Details</div>
+                <div className="space-y-2">
+                  <div> Position Size: Reduced to $750 (adjusted for moderate risk preference)</div>
+                  <div> Stop-Loss Level: Tightened to -3.5% to limit downside exposure</div>
+                  <div> High-Risk Signals Detected: Skipped entry due to volatile market conditions</div>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-4">
+              <button 
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 text-gray-400 hover:text-white transition"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  alert("Copy trade settings applied!");
+                  setShowModal(false);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
