@@ -203,6 +203,19 @@ export function Trade() {
 
   const navigate = useNavigate();
 
+  const handleStockSelect = (stock: typeof faangStocks[0]) => {
+    setSelectedStock({
+      symbol: stock.symbol,
+      name: stock.name,
+      price: stock.price,
+      change: stock.change,
+      changePercent: (stock.change / stock.price) * 100
+    });
+
+    // Fetch new data for the selected stock
+    getCandlestickData(stock.symbol);
+  };
+
   useEffect(() => {
     // Fetch data once when component mounts
     getCandlestickData().then(data => {
@@ -222,8 +235,8 @@ export function Trade() {
     });
   }, []);
 
-  const getCandlestickData = () => {
-    return fetch(`https://finnhub.io/api/v1/quote?symbol=AAPL&token=cujqorhr01qgs4826fb0cujqorhr01qgs4826fbg`)
+  const getCandlestickData = (symbol: string = 'AAPL') => {
+    return fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=cujqorhr01qgs4826fb0cujqorhr01qgs4826fbg`)
       .then(response => response.json())
       .then(data => {
         const currentDate = new Date();
@@ -334,29 +347,31 @@ export function Trade() {
                 {faangStocks.map((stock) => (
                   <div 
                     key={stock.symbol}
-                    className="bg-gray-700/30 p-3 rounded-lg hover:bg-gray-700/50 transition cursor-pointer"
+                    onClick={() => handleStockSelect(stock)}
+                    className={`cursor-pointer p-4 rounded-lg transition-all duration-200 ${
+                      selectedStock.symbol === stock.symbol
+                        ? 'bg-blue-600'
+                        : 'bg-gray-700 hover:bg-gray-600'
+                    }`}
                   >
-                    <div className="flex items-start justify-between">
+                    <div className="flex justify-between items-start mb-2">
                       <div>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-white font-medium">{stock.symbol}</span>
-                          <span className={`text-sm ${
-                            stock.change >= 0 ? 'text-green-500' : 'text-red-500'
-                          }`}>
-                            {stock.change >= 0 ? '+' : ''}{stock.change}%
-                          </span>
-                        </div>
-                        <div className="text-sm text-gray-400 mt-1">{stock.name}</div>
+                        <h3 className="font-bold text-white">{stock.symbol}</h3>
+                        <p className="text-sm text-gray-300">{stock.name}</p>
                       </div>
-                      <div className="text-right">
-                        <div className="text-white font-medium">${stock.price}</div>
-                        <div className="text-sm text-gray-400 mt-1">Vol: {stock.volume}</div>
+                      <div className={`flex items-center ${
+                        stock.change >= 0 ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {stock.change >= 0 ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
                       </div>
                     </div>
-                    <div className="mt-2 pt-2 border-t border-gray-700/50">
-                      <div className="text-sm text-gray-400">
-                        Market Cap: {stock.marketCap}
-                      </div>
+                    <div className="flex justify-between items-end">
+                      <span className="text-lg font-semibold text-white">${stock.price}</span>
+                      <span className={`text-sm ${
+                        stock.change >= 0 ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {stock.change >= 0 ? '+' : ''}{stock.change}%
+                      </span>
                     </div>
                   </div>
                 ))}

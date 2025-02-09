@@ -15,28 +15,29 @@ interface StockNewsProps {
   stockName: string;
 }
 
-const API_KEY = 'pub_6849375d2a7a25dc82a745e0113ab29c6f150';
+const API_KEY = '83eb26e9361b455f9c556f9ce78bf0ab';
 
 const StockNews = ({ stockName }: StockNewsProps) => {
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchNews = async () => {
-    if (!stockName) return;
-
-    setIsLoading(true);
+    setLoading(true);
     setError(null);
-
     try {
+      // Get news from the last 30 days
+      const today = new Date();
+      const thirtyDaysAgo = new Date(today.setDate(today.getDate() - 30));
+      const fromDate = thirtyDaysAgo.toISOString().split('T')[0];
+      
       const response = await fetch(
-        `https://newsdata.io/api/1/news?` + 
-        new URLSearchParams({
-          apikey: API_KEY,
-          q: `${stockName} stock market`,
-          language: 'en',
-          category: 'business',
-        })
+        `https://newsapi.org/v2/everything?` +
+        `q=${stockName}` +
+        `&from=${fromDate}` +
+        `&language=en` +
+        `&sortBy=publishedAt` +
+        `&apiKey=${API_KEY}`
       );
 
       if (!response.ok) {
@@ -44,27 +45,27 @@ const StockNews = ({ stockName }: StockNewsProps) => {
       }
 
       const data = await response.json();
-      
-      if (data.status === 'success' && data.results?.length > 0) {
-        const processedNews = data.results.slice(0, 10).map((item: any) => ({
-          title: item.title || 'No Title',
-          link: item.link || '#',
-          snippet: item.description || 'No description available',
-          source: item.source_id || 'Unknown Source',
-          date: new Date(item.pubDate).toLocaleDateString(),
-          image: item.image_url,
+
+      if (data.status === 'ok' && Array.isArray(data.articles)) {
+        const processedNews = data.articles.map((item: any) => ({
+          title: item.title,
+          snippet: item.description || '',
+          link: item.url,
+          source: item.source.name || 'Unknown Source',
+          date: new Date(item.publishedAt).toLocaleDateString(),
+          image: item.urlToImage,
           isDummy: false,
           sentiment: analyzeSentiment(item.title + ' ' + (item.description || ''))
         }));
         setNewsItems(processedNews);
       } else {
-        setError('No recent news found.');
+        throw new Error(data.message || 'Invalid data format received from the API');
       }
     } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch news');
       console.error('Error fetching news:', err);
-      setError('Unable to fetch news.');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -103,7 +104,7 @@ const StockNews = ({ stockName }: StockNewsProps) => {
         </div>
       )}
       
-      {isLoading ? (
+      {loading ? (
         <div className="text-center py-4 text-gray-400">
           <div className="animate-spin inline-block w-6 h-6 border-2 border-current border-t-transparent text-blue-500 rounded-full mb-2" />
           <p>Loading news...</p>
