@@ -203,17 +203,59 @@ export function Trade() {
 
   const navigate = useNavigate();
 
-  const handleStockSelect = (stock: typeof faangStocks[0]) => {
-    setSelectedStock({
-      symbol: stock.symbol,
-      name: stock.name,
-      price: stock.price,
-      change: stock.change,
-      changePercent: (stock.change / stock.price) * 100
-    });
+  const handleStockSelect = async (stock: typeof faangStocks[0]) => {
+    try {
+      // Fetch latest price for the selected stock
+      const response = await fetch(
+        `https://finnhub.io/api/v1/quote?symbol=${stock.symbol}&token=cujqorhr01qgs4826fb0cujqorhr01qgs4826fbg`
+      );
 
-    // Fetch new data for the selected stock
-    getCandlestickData(stock.symbol);
+      if (!response.ok) {
+        throw new Error('Failed to fetch stock data');
+      }
+
+      const data = await response.json();
+      
+      // Update the selected stock in the FAANG stocks array
+      const updatedFaangStocks = faangStocks.map(s => {
+        if (s.symbol === stock.symbol) {
+          return {
+            ...s,
+            price: data.c,
+            change: data.d || stock.change,
+            changePercent: data.dp || (stock.change / stock.price) * 100
+          };
+        }
+        return s;
+      });
+
+      // Update the global faangStocks array
+      Object.assign(faangStocks, updatedFaangStocks);
+
+      // Update selected stock state
+      setSelectedStock({
+        symbol: stock.symbol,
+        name: stock.name,
+        price: data.c,
+        change: data.d || stock.change,
+        changePercent: data.dp || (stock.change / stock.price) * 100
+      });
+
+      // Fetch new data for the selected stock
+      getCandlestickData(stock.symbol);
+      
+    } catch (error) {
+      console.error('Error updating stock data:', error);
+      // Fall back to using the existing stock data
+      setSelectedStock({
+        symbol: stock.symbol,
+        name: stock.name,
+        price: stock.price,
+        change: stock.change,
+        changePercent: (stock.change / stock.price) * 100
+      });
+      getCandlestickData(stock.symbol);
+    }
   };
 
   useEffect(() => {
@@ -235,98 +277,161 @@ export function Trade() {
     });
   }, []);
 
-  const getCandlestickData = (symbol: string = 'AAPL') => {
-    return fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=cujqorhr01qgs4826fb0cujqorhr01qgs4826fbg`)
-      .then(response => response.json())
-      .then(data => {
-        const currentDate = new Date();
-        const startDate = new Date();
-        startDate.setMonth(startDate.getMonth() - 1); // Start from 1 month ago
+  const getCandlestickData = async (symbol: string = 'AAPL') => {
+    try {
+      // 1. Get current price from API
+      const response = await fetch(
+        `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=cujqorhr01qgs4826fb0cujqorhr01qgs4826fbg`
+      );
 
-        // Generate 1 month of historical data starting from a reasonable past price
-        const historicalData = [];
-        let currentPrice = data.c;
+      if (!response.ok) {
+        throw new Error('Failed to fetch stock data');
+      }
+
+      const data = await response.json();
+      const currentPrice = data.c;
+
+      // 2. Generate past 90 days of historical data
+      const historicalData = [];
+      const currentDate = new Date();
+      let pastPrice = currentPrice - (currentPrice * 0.20); // Start 20% below current price
+
+      // Generate 90 days of past data with more realistic movements
+      for (let i = 90; i >= 0; i--) {
+        const date = new Date(currentDate);
+        date.setDate(date.getDate() - i);
         
-        for (let i = 30; i >= 0; i--) { // Generate 30 days backwards from current price
-          const date = new Date(currentDate);
-          date.setDate(date.getDate() - i);
-          
-          // Add some realistic daily price movements (0.5-2% daily change)
-          const dailyChange = (Math.random() - 0.5) * 0.02; // -1% to +1% change
-          const volatility = currentPrice * 0.01; // 1% volatility
-          
-          const dayClose = i === 0 ? data.c : currentPrice * (1 + dailyChange);
-          const dayOpen = dayClose * (1 + (Math.random() - 0.5) * 0.01);
-          const dayHigh = Math.max(dayOpen, dayClose) * (1 + Math.random() * 0.005);
-          const dayLow = Math.min(dayOpen, dayClose) * (1 - Math.random() * 0.005);
+        // Generate realistic daily price movements trending towards current price
+        const progressToPresent = (90 - i) / 90; // 0 to 1 as we get closer to present
+        const targetPrice = currentPrice;
+        const priceGap = targetPrice - pastPrice;
+        // More varied price movements
+        const trendStrength = Math.sin(i * 0.1) * 0.3 + 0.7; // Varies between 0.4 and 1.0
+        const dailyChange = (priceGap * progressToPresent * 0.05 * trendStrength) + 
+                          ((Math.random() - 0.5) * Math.max(2, currentPrice * 0.01)); // Scaled to price
+        
+        const dayClose = i === 0 ? currentPrice : pastPrice + dailyChange;
+        
+        // Larger intraday price movements for more visible candlesticks
+        const volatility = Math.max(2, currentPrice * 0.015 * (1 + Math.sin(i * 0.05))); // Varying volatility
+        const dayOpen = dayClose + ((Math.random() - 0.5) * volatility);
+        const highLowRange = Math.max(1, volatility * 0.6); // High-low range based on volatility
+        const dayHigh = Math.max(dayOpen, dayClose) + (Math.random() * highLowRange);
+        const dayLow = Math.min(dayOpen, dayClose) - (Math.random() * highLowRange);
 
-          historicalData.push({
-            time: date.toISOString().split('T')[0],
-            open: Number(dayOpen.toFixed(2)),
-            high: Number(dayHigh.toFixed(2)),
-            low: Number(dayLow.toFixed(2)),
-            close: Number(dayClose.toFixed(2))
-          });
+        historicalData.push({
+          time: date.toISOString().split('T')[0],
+          open: Number(dayOpen.toFixed(2)),
+          high: Number(dayHigh.toFixed(2)),
+          low: Number(dayLow.toFixed(2)),
+          close: Number(dayClose.toFixed(2))
+        });
 
-          if (i !== 0) { // Don't update price for the last day (current)
-            currentPrice = dayClose;
-          }
+        // Add some market cycles and patterns
+        if (i % 20 === 0) { // Every 20 days, add some trend changes
+          const trendChange = (Math.random() - 0.5) * Math.max(5, currentPrice * 0.02);
+          pastPrice += trendChange;
+        } else {
+          pastPrice = dayClose;
         }
+      }
 
-        // Generate future predictions for 30 days
-        const futureStartDate = new Date(currentDate);
-        futureStartDate.setDate(futureStartDate.getDate() + 1);
+      // 3. Generate future predictions (next 30 days)
+      const futureStartDate = new Date(currentDate);
+      futureStartDate.setDate(futureStartDate.getDate() + 1);
 
-        // Main AI prediction (purple line)
-        const aiPredictions = Array.from({ length: 30 }, (_, i) => {
-          const date = new Date(futureStartDate);
-          date.setDate(date.getDate() + i);
-          const predictedPrice = i === 0 ? data.c : data.c * (1 + (Math.sin(i * 0.2) * 0.05) + (i * 0.001)); // Start from current price
-          return {
-            time: date.toISOString().split('T')[0],
-            value: Number(predictedPrice.toFixed(2))
-          };
-        });
+      // All predictions start exactly from current price
+      const baselinePrice = currentPrice;
 
-        // Copy trader predictions
-        const trader1Predictions = Array.from({ length: 30 }, (_, i) => {
-          const date = new Date(futureStartDate);
-          date.setDate(date.getDate() + i);
-          const predictedPrice = i === 0 ? data.c : data.c * (1 + (Math.sin((i + 2) * 0.2) * 0.06) + (i * 0.002)); // Start from current price
-          return {
-            time: date.toISOString().split('T')[0],
-            value: Number(predictedPrice.toFixed(2))
-          };
-        });
-
-        const trader2Predictions = Array.from({ length: 30 }, (_, i) => {
-          const date = new Date(futureStartDate);
-          date.setDate(date.getDate() + i);
-          const predictedPrice = i === 0 ? data.c : data.c * (1 + (Math.cos(i * 0.15) * 0.04) - (i * 0.0005)); // Start from current price
-          return {
-            time: date.toISOString().split('T')[0],
-            value: Number(predictedPrice.toFixed(2))
-          };
-        });
-
-        const trader3Predictions = Array.from({ length: 30 }, (_, i) => {
-          const date = new Date(futureStartDate);
-          date.setDate(date.getDate() + i);
-          const predictedPrice = i === 0 ? data.c : data.c * (1 + (Math.sin((i - 2) * 0.25) * 0.03) + (i * 0.0008)); // Start from current price
-          return {
-            time: date.toISOString().split('T')[0],
-            value: Number(predictedPrice.toFixed(2))
-          };
-        });
-
+      // AI Prediction (purple line) - more conservative
+      const aiPrediction = Array.from({ length: 30 }, (_, i) => {
+        const date = new Date(futureStartDate);
+        date.setDate(date.getDate() + i);
+        let predictedPrice;
+        if (i === 0) {
+          predictedPrice = baselinePrice;
+        } else {
+          const change = (Math.sin(i * 0.2) * 10) + (i * 0.5); // Dollar amount changes
+          predictedPrice = baselinePrice + change;
+        }
         return {
-          historical: historicalData,
-          aiPrediction: aiPredictions,
-          trader1: trader1Predictions,
-          trader2: trader2Predictions,
-          trader3: trader3Predictions
+          time: date.toISOString().split('T')[0],
+          value: Number(predictedPrice.toFixed(2))
         };
       });
+
+      // Trader 1 - Aggressive growth strategy
+      const trader1Data = Array.from({ length: 30 }, (_, i) => {
+        const date = new Date(futureStartDate);
+        date.setDate(date.getDate() + i);
+        let predictedPrice;
+        if (i === 0) {
+          predictedPrice = baselinePrice;
+        } else {
+          const change = (Math.sin((i + 2) * 0.2) * 15) + (i * 0.8); // Larger dollar changes
+          predictedPrice = baselinePrice + change;
+        }
+        return {
+          time: date.toISOString().split('T')[0],
+          value: Number(predictedPrice.toFixed(2))
+        };
+      });
+
+      // Trader 2 - Conservative strategy
+      const trader2Data = Array.from({ length: 30 }, (_, i) => {
+        const date = new Date(futureStartDate);
+        date.setDate(date.getDate() + i);
+        let predictedPrice;
+        if (i === 0) {
+          predictedPrice = baselinePrice;
+        } else {
+          const change = (Math.cos(i * 0.15) * 8) + (i * 0.3); // Smaller dollar changes
+          predictedPrice = baselinePrice + change;
+        }
+        return {
+          time: date.toISOString().split('T')[0],
+          value: Number(predictedPrice.toFixed(2))
+        };
+      });
+
+      // Trader 3 - Volatile strategy
+      const trader3Data = Array.from({ length: 30 }, (_, i) => {
+        const date = new Date(futureStartDate);
+        date.setDate(date.getDate() + i);
+        let predictedPrice;
+        if (i === 0) {
+          predictedPrice = baselinePrice;
+        } else {
+          const change = (Math.sin((i - 2) * 0.25) * 12) + (i * 0.6); // Medium dollar changes
+          predictedPrice = baselinePrice + change;
+        }
+        return {
+          time: date.toISOString().split('T')[0],
+          value: Number(predictedPrice.toFixed(2))
+        };
+      });
+
+      const chartData = {
+        historical: historicalData,
+        aiPrediction,
+        trader1: trader1Data,
+        trader2: trader2Data,
+        trader3: trader3Data
+      };
+
+      setChartData(chartData);
+      return chartData;
+
+    } catch (error) {
+      console.error('Error fetching stock data:', error);
+      return {
+        historical: [],
+        aiPrediction: [],
+        trader1: [],
+        trader2: [],
+        trader3: []
+      };
+    }
   };
 
   return (

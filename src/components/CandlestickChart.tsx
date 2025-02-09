@@ -45,11 +45,36 @@ export function CandlestickChart({ getData }: CandlestickChartProps) {
       },
       rightPriceScale: {
         borderColor: 'rgba(255, 255, 255, 0.2)',
+        mode: 0,
+        autoScale: true,
+        alignLabels: true,
+        borderVisible: true,
+        scaleMargins: {
+          top: 0.1,
+          bottom: 0.1,
+        },
       },
       timeScale: {
         borderColor: 'rgba(255, 255, 255, 0.2)',
         timeVisible: true,
         secondsVisible: false,
+        barSpacing: 12,
+        minBarSpacing: 8,
+        rightOffset: 5,
+        fixLeftEdge: true,
+        fixRightEdge: true,
+        visible: true,
+      },
+      handleScale: {
+        mouseWheel: true,
+        pinch: true,
+        axisPressedMouseMove: true,
+      },
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: true,
       },
       crosshair: {
         vertLine: {
@@ -63,8 +88,6 @@ export function CandlestickChart({ getData }: CandlestickChartProps) {
           style: LineStyle.Dotted,
         },
       },
-      handleScroll: true,
-      handleScale: true,
     });
 
     chartRef.current = chart;
@@ -76,6 +99,19 @@ export function CandlestickChart({ getData }: CandlestickChartProps) {
       borderVisible: false,
       wickUpColor: '#22c55e',
       wickDownColor: '#ef4444',
+      priceLineVisible: false,
+      lastValueVisible: false,
+      priceFormat: {
+        type: 'custom',
+        formatter: (price: number) => {
+          if (price >= 1000) {
+            return '$' + price.toFixed(2);
+          }
+          return '$' + price.toFixed(2);
+        },
+        precision: 2,
+        minMove: 0.01,
+      },
     });
     candleSeriesRef.current = candleSeries;
 
@@ -84,6 +120,16 @@ export function CandlestickChart({ getData }: CandlestickChartProps) {
       color: '#a855f7',
       lineWidth: 2,
       lineStyle: LineStyle.Dashed,
+      priceFormat: {
+        type: 'custom',
+        formatter: (price: number) => {
+          if (price >= 1000) {
+            return '$' + price.toFixed(2);
+          }
+          return '$' + price.toFixed(2);
+        },
+        precision: 2,
+      },
     });
     aiPredictionRef.current = aiSeries;
 
@@ -92,6 +138,16 @@ export function CandlestickChart({ getData }: CandlestickChartProps) {
       color: 'rgba(128, 128, 128, 0.5)',
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,
+      priceFormat: {
+        type: 'custom',
+        formatter: (price: number) => {
+          if (price >= 1000) {
+            return '$' + price.toFixed(2);
+          }
+          return '$' + price.toFixed(2);
+        },
+        precision: 2,
+      },
     });
     trader1Ref.current = trader1Series;
 
@@ -99,6 +155,16 @@ export function CandlestickChart({ getData }: CandlestickChartProps) {
       color: 'rgba(128, 128, 128, 0.5)',
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,
+      priceFormat: {
+        type: 'custom',
+        formatter: (price: number) => {
+          if (price >= 1000) {
+            return '$' + price.toFixed(2);
+          }
+          return '$' + price.toFixed(2);
+        },
+        precision: 2,
+      },
     });
     trader2Ref.current = trader2Series;
 
@@ -106,6 +172,16 @@ export function CandlestickChart({ getData }: CandlestickChartProps) {
       color: 'rgba(128, 128, 128, 0.5)',
       lineWidth: 1,
       lineStyle: LineStyle.Dashed,
+      priceFormat: {
+        type: 'custom',
+        formatter: (price: number) => {
+          if (price >= 1000) {
+            return '$' + price.toFixed(2);
+          }
+          return '$' + price.toFixed(2);
+        },
+        precision: 2,
+      },
     });
     trader3Ref.current = trader3Series;
 
@@ -148,7 +224,12 @@ export function CandlestickChart({ getData }: CandlestickChartProps) {
       }
 
       if (chartRef.current) {
-        chartRef.current.timeScale().fitContent();
+        const timeScale = chartRef.current.timeScale();
+        const visibleRange = timeScale.getVisibleRange();
+        timeScale.fitContent();
+        if (visibleRange) {
+          timeScale.setVisibleRange(visibleRange);
+        }
       }
     };
 
@@ -158,9 +239,31 @@ export function CandlestickChart({ getData }: CandlestickChartProps) {
     // Update every 1 second
     const interval = setInterval(updateData, 1000);
 
+    // Resize observer
+    const resizeObserver = new ResizeObserver(entries => {
+      if (chartRef.current) {
+        const timeScale = chartRef.current.timeScale();
+        const visibleRange = timeScale.getVisibleRange();
+        chartRef.current.applyOptions({
+          timeScale: {
+            barSpacing: 12,
+            timeVisible: true,
+            secondsVisible: false,
+          },
+          width: entries[0].contentRect.width,
+          height: entries[0].contentRect.height
+        });
+        if (visibleRange) {
+          timeScale.setVisibleRange(visibleRange);
+        }
+      }
+    });
+    resizeObserver.observe(chartContainerRef.current);
+
     return () => {
       chart.remove();
       clearInterval(interval);
+      resizeObserver.unobserve(chartContainerRef.current);
     };
   }, [getData]);
 
