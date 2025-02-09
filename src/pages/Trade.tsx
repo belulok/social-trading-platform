@@ -24,47 +24,42 @@ import { CandlestickChart } from '../components/CandlestickChart';
 import StockNews from '../components/StockNews';
 import { Link, useNavigate } from 'react-router-dom';
 
-// Mock FAANG stocks data
-const faangStocks = [
+// FAANG stocks initial data
+const initialFaangStocks = [
   {
     symbol: 'META',
     name: 'Meta Platforms Inc',
-    price: 485.58,
-    change: +1.25,
-    volume: '15.2M',
-    marketCap: '1.24T'
+    price: 0,
+    change: 0,
+    changePercent: 0
   },
   {
     symbol: 'AAPL',
     name: 'Apple Inc',
-    price: 182.52,
-    change: -0.68,
-    volume: '25.8M',
-    marketCap: '2.82T'
+    price: 0,
+    change: 0,
+    changePercent: 0
   },
   {
     symbol: 'AMZN',
     name: 'Amazon.com Inc',
-    price: 175.35,
-    change: +2.15,
-    volume: '18.5M',
-    marketCap: '1.82T'
+    price: 0,
+    change: 0,
+    changePercent: 0
   },
   {
     symbol: 'NFLX',
     name: 'Netflix Inc',
-    price: 605.88,
-    change: +3.42,
-    volume: '8.4M',
-    marketCap: '262.5B'
+    price: 0,
+    change: 0,
+    changePercent: 0
   },
   {
     symbol: 'GOOGL',
     name: 'Alphabet Inc',
-    price: 147.68,
-    change: +0.85,
-    volume: '12.7M',
-    marketCap: '1.85T'
+    price: 0,
+    change: 0,
+    changePercent: 0
   }
 ];
 
@@ -185,6 +180,7 @@ export function Trade() {
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [timeframe, setTimeframe] = useState('1M');
   const [activeTab, setActiveTab] = useState('news');
+  const [faangStocks, setFaangStocks] = useState(initialFaangStocks);
   const [selectedStock, setSelectedStock] = useState({
     symbol: 'AAPL',
     name: 'Apple Inc.',
@@ -216,66 +212,96 @@ export function Trade() {
 
       const data = await response.json();
       
-      // Update the selected stock in the FAANG stocks array
-      const updatedFaangStocks = faangStocks.map(s => {
-        if (s.symbol === stock.symbol) {
-          return {
-            ...s,
-            price: data.c,
-            change: data.d || stock.change,
-            changePercent: data.dp || (stock.change / stock.price) * 100
-          };
-        }
-        return s;
-      });
-
-      // Update the global faangStocks array
-      Object.assign(faangStocks, updatedFaangStocks);
-
-      // Update selected stock state
-      setSelectedStock({
-        symbol: stock.symbol,
-        name: stock.name,
+      // Update the selected stock with real-time data
+      const updatedStock = {
+        ...stock,
         price: data.c,
-        change: data.d || stock.change,
-        changePercent: data.dp || (stock.change / stock.price) * 100
-      });
-
-      // Fetch new data for the selected stock
-      getCandlestickData(stock.symbol);
+        change: data.d,
+        changePercent: data.dp
+      };
       
+      setSelectedStock(updatedStock);
+
+      // Update the stock in FAANG stocks list
+      setFaangStocks(prevStocks => 
+        prevStocks.map(s => 
+          s.symbol === stock.symbol ? updatedStock : s
+        )
+      );
+
+      // Get new chart data for the selected stock
+      const newChartData = await getCandlestickData(stock.symbol);
+      setChartData(newChartData);
+
+      // Update URL with selected stock
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.set('symbol', stock.symbol);
+      window.history.pushState({}, '', newUrl.toString());
+
     } catch (error) {
-      console.error('Error updating stock data:', error);
-      // Fall back to using the existing stock data
-      setSelectedStock({
-        symbol: stock.symbol,
-        name: stock.name,
-        price: stock.price,
-        change: stock.change,
-        changePercent: (stock.change / stock.price) * 100
-      });
-      getCandlestickData(stock.symbol);
+      console.error('Error fetching stock data:', error);
     }
   };
 
   useEffect(() => {
-    // Fetch data once when component mounts
-    getCandlestickData().then(data => {
-      setChartData(data);
-      // Update selected stock price with the latest data
-      fetch('https://finnhub.io/api/v1/quote?symbol=AAPL&token=cujqorhr01qgs4826fb0cujqorhr01qgs4826fbg')
-        .then(response => response.json())
-        .then(quoteData => {
-          setSelectedStock({
-            symbol: 'AAPL',
-            name: 'Apple Inc.',
-            price: quoteData.c,
-            change: quoteData.d,
-            changePercent: quoteData.dp
-          });
-        });
-    });
-  }, []);
+    // Load initial data for default stock (AAPL)
+    const loadInitialData = async () => {
+      // Get symbol from URL or default to AAPL
+      const urlParams = new URLSearchParams(window.location.search);
+      const symbol = urlParams.get('symbol') || 'AAPL';
+      
+      // Find the stock in FAANG stocks
+      const stock = initialFaangStocks.find(s => s.symbol === symbol) || initialFaangStocks[1]; // AAPL is index 1
+      
+      // Set selected stock
+      setSelectedStock(stock);
+      
+      // Get chart data
+      const initialData = await getCandlestickData(symbol);
+      if (initialData) {
+        setChartData(initialData);
+      }
+    };
+    loadInitialData();
+
+    // Update all FAANG stock prices
+    const updateFaangPrices = async () => {
+      const updatedStocks = await Promise.all(
+        initialFaangStocks.map(async (stock) => {
+          try {
+            const response = await fetch(
+              `https://finnhub.io/api/v1/quote?symbol=${stock.symbol}&token=cujqorhr01qgs4826fb0cujqorhr01qgs4826fbg`
+            );
+            if (!response.ok) throw new Error('Failed to fetch');
+            const data = await response.json();
+            return {
+              ...stock,
+              price: data.c,
+              change: data.d,
+              changePercent: data.dp
+            };
+          } catch (error) {
+            console.error(`Error fetching ${stock.symbol}:`, error);
+            return stock;
+          }
+        })
+      );
+      setFaangStocks(updatedStocks);
+      
+      // Also update selected stock if it's one of FAANG
+      const selectedStockData = updatedStocks.find(s => s.symbol === selectedStock.symbol);
+      if (selectedStockData) {
+        setSelectedStock(selectedStockData);
+      }
+    };
+
+    updateFaangPrices();
+
+    // Update prices every 10 seconds
+    const interval = setInterval(updateFaangPrices, 10000);
+
+    return () => clearInterval(interval);
+  }, [window.location.search]); // Re-run when URL changes
 
   const getCandlestickData = async (symbol: string = 'AAPL') => {
     try {
@@ -305,6 +331,7 @@ export function Trade() {
         const progressToPresent = (90 - i) / 90; // 0 to 1 as we get closer to present
         const targetPrice = currentPrice;
         const priceGap = targetPrice - pastPrice;
+        
         // More varied price movements
         const trendStrength = Math.sin(i * 0.1) * 0.3 + 0.7; // Varies between 0.4 and 1.0
         const dailyChange = (priceGap * progressToPresent * 0.05 * trendStrength) + 
@@ -411,7 +438,7 @@ export function Trade() {
         };
       });
 
-      const chartData = {
+      return {
         historical: historicalData,
         aiPrediction,
         trader1: trader1Data,
@@ -419,18 +446,9 @@ export function Trade() {
         trader3: trader3Data
       };
 
-      setChartData(chartData);
-      return chartData;
-
     } catch (error) {
-      console.error('Error fetching stock data:', error);
-      return {
-        historical: [],
-        aiPrediction: [],
-        trader1: [],
-        trader2: [],
-        trader3: []
-      };
+      console.error('Error generating chart data:', error);
+      return null;
     }
   };
 
@@ -441,42 +459,27 @@ export function Trade() {
           {/* FAANG Stocks Panel */}
           <div className="space-y-6">
             <div className="bg-gray-800 rounded-xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-white">FAANG Stocks</h3>
-                <button className="text-sm text-gray-400 hover:text-white transition flex items-center">
-                  View All
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </button>
-              </div>
+              <h2 className="text-xl font-bold text-white mb-4">FAANG Stocks</h2>
               <div className="space-y-4">
                 {faangStocks.map((stock) => (
-                  <div 
+                  <div
                     key={stock.symbol}
                     onClick={() => handleStockSelect(stock)}
-                    className={`cursor-pointer p-4 rounded-lg transition-all duration-200 ${
+                    className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition ${
                       selectedStock.symbol === stock.symbol
-                        ? 'bg-blue-600'
+                        ? 'bg-indigo-500 hover:bg-indigo-600'
                         : 'bg-gray-700 hover:bg-gray-600'
                     }`}
                   >
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="font-bold text-white">{stock.symbol}</h3>
-                        <p className="text-sm text-gray-300">{stock.name}</p>
-                      </div>
-                      <div className={`flex items-center ${
-                        stock.change >= 0 ? 'text-green-400' : 'text-red-400'
-                      }`}>
-                        {stock.change >= 0 ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
-                      </div>
+                    <div>
+                      <div className="font-semibold text-white">{stock.symbol}</div>
+                      <div className="text-sm text-gray-400">{stock.name}</div>
                     </div>
-                    <div className="flex justify-between items-end">
-                      <span className="text-lg font-semibold text-white">${stock.price}</span>
-                      <span className={`text-sm ${
-                        stock.change >= 0 ? 'text-green-400' : 'text-red-400'
-                      }`}>
-                        {stock.change >= 0 ? '+' : ''}{stock.change}%
-                      </span>
+                    <div className="text-right">
+                      <div className="font-semibold text-white">${stock.price.toLocaleString()}</div>
+                      <div className={`text-sm ${stock.changePercent >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -534,7 +537,11 @@ export function Trade() {
               <div className="h-[600px]">
                 {chartData && (
                   <CandlestickChart 
-                    getData={() => Promise.resolve(chartData)}
+                    candleData={chartData.historical}
+                    aiPrediction={chartData.aiPrediction}
+                    trader1={chartData.trader1}
+                    trader2={chartData.trader2}
+                    trader3={chartData.trader3}
                   />
                 )}
               </div>

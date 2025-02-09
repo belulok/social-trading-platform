@@ -39,6 +39,38 @@ export function Simulation() {
   const chartDataRef = useRef<ChartData[]>([]);
 
   // Generate initial chart data
+  const generateChartData = () => {
+    const data: ChartData[] = [];
+    const now = new Date();
+    let price = 48235.50;
+
+    // Generate 90 days of past data
+    for (let i = 90; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+
+      // Generate realistic price movements
+      const volatility = Math.max(50, price * 0.02); // 2% volatility
+      const change = (Math.random() - 0.5) * volatility;
+      const open = price + change;
+      const high = open + Math.abs(change) * Math.random();
+      const low = open - Math.abs(change) * Math.random();
+      const close = (open + high + low) / 3 + (Math.random() - 0.5) * volatility * 0.5;
+
+      data.push({
+        time: date.toISOString().split('T')[0],
+        open: Number(open.toFixed(2)),
+        high: Number(high.toFixed(2)),
+        low: Number(low.toFixed(2)),
+        close: Number(close.toFixed(2))
+      });
+
+      price = close;
+    }
+
+    return data;
+  };
+
   useEffect(() => {
     chartDataRef.current = generateChartData();
   }, []);
@@ -79,49 +111,23 @@ export function Simulation() {
     };
   }, [position, updatePrice]);
 
-  const generateChartData = () => {
-    const periods = 100;
+  const addNewCandle = useCallback(() => {
     const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    
-    const data = [];
-    for (let i = periods - 1; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      
-      const basePrice = currentPrice * (1 + Math.sin(i * 0.1) * 0.1);
-      const volatility = basePrice * 0.02;
-      
-      data.push({
-        time: date.toISOString().split('T')[0],
-        open: Number((basePrice - volatility * Math.random()).toFixed(2)),
-        high: Number((basePrice + volatility).toFixed(2)),
-        low: Number((basePrice - volatility).toFixed(2)),
-        close: Number((basePrice + volatility * Math.random()).toFixed(2))
-      });
-    }
-
-    return data;
-  };
-
-  // Add new candle every minute
-  useEffect(() => {
-    const addNewCandle = () => {
-      const now = new Date();
-      const newCandle = {
-        time: now.toISOString().split('T')[0],
-        open: currentPrice,
-        high: currentPrice,
-        low: currentPrice,
-        close: currentPrice
-      };
-
-      chartDataRef.current = [...chartDataRef.current.slice(-99), newCandle];
+    const newCandle = {
+      time: now.toISOString().split('T')[0],
+      open: currentPrice,
+      high: currentPrice,
+      low: currentPrice,
+      close: currentPrice
     };
 
+    chartDataRef.current = [...chartDataRef.current.slice(-99), newCandle];
+  }, [currentPrice]);
+
+  useEffect(() => {
     const interval = setInterval(addNewCandle, 60000); 
     return () => clearInterval(interval);
-  }, [currentPrice]);
+  }, [addNewCandle]);
 
   const showError = (message: string) => {
     setAlertMessage(message);
@@ -249,24 +255,18 @@ export function Simulation() {
           <div className="lg:col-span-3 bg-gray-800 rounded-xl p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-white">BTC/USD</h2>
-                <p className="text-gray-400">Bitcoin / US Dollar</p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold text-white">${currentPrice.toLocaleString()}</p>
-                <p className="text-green-500">Live Price</p>
+                <div className="text-2xl font-bold text-white">${currentPrice.toLocaleString()}</div>
+                <div className="text-gray-400">Current Price</div>
               </div>
             </div>
-            <div className="h-[600px]">
-              <CandlestickChart getData={async () => {
-                return {
-                  historical: chartDataRef.current,
-                  aiPrediction: chartDataRef.current.map(item => ({ ...item, value: item.close })),
-                  trader1: chartDataRef.current.map(item => ({ ...item, value: item.close * (1 + Math.random() * 0.1) })),
-                  trader2: chartDataRef.current.map(item => ({ ...item, value: item.close * (1 - Math.random() * 0.1) })),
-                  trader3: chartDataRef.current.map(item => ({ ...item, value: item.close * (1 + (Math.random() - 0.5) * 0.1) }))
-                };
-              }} />
+            <div className="h-[500px]">
+              <CandlestickChart 
+                candleData={chartDataRef.current}
+                aiPrediction={[]}
+                trader1={[]}
+                trader2={[]}
+                trader3={[]}
+              />
             </div>
           </div>
 
