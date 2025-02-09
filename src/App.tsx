@@ -32,28 +32,24 @@ function App() {
       <Navigation />
       {user && <AIChatSidebar />}
       <Routes>
-        <Route
-          path="/"
-          element={
-            <PrivateRoute>
-              <Home />
-            </PrivateRoute>
-          }
-        />
+        {/* Public routes */}
+        <Route path="/" element={<Home />} />
         <Route path="/signup" element={<SignUp />} />
-        <Route
-          path="/profile-setup"
-          element={
-            <PrivateRoute>
-              <ProfileSetup />
-            </PrivateRoute>
-          }
-        />
+
+        {/* Protected routes */}
         <Route
           path="/dashboard"
           element={
             <PrivateRoute>
               <Dashboard />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/profile-setup"
+          element={
+            <PrivateRoute>
+              <ProfileSetup />
             </PrivateRoute>
           }
         />

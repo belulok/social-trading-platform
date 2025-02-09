@@ -81,16 +81,15 @@ export function Simulation() {
       const tradeVolatility = position ? 300 : baseVolatility;
       const bias = position?.type === 'long' ? 0.6 : position?.type === 'short' ? 0.4 : 0.5;
       
-      const random = Math.random();
-      const change = (random > bias ? 1 : -1) * tradeVolatility * random;
+      const change = (Math.random() - bias) * tradeVolatility;
       const newPrice = Number((prev + change).toFixed(2));
 
-      // Update the latest candle
+      // Update the last candle in chartData
       if (chartDataRef.current.length > 0) {
         const lastCandle = chartDataRef.current[chartDataRef.current.length - 1];
         lastCandle.close = newPrice;
-        lastCandle.high = Math.max(lastCandle.high!, newPrice);
-        lastCandle.low = Math.min(lastCandle.low!, newPrice);
+        lastCandle.high = Math.max(lastCandle.high, newPrice);
+        lastCandle.low = Math.min(lastCandle.low, newPrice);
       }
 
       return newPrice;
@@ -103,12 +102,15 @@ export function Simulation() {
       clearInterval(priceUpdateInterval);
     }
 
-    const interval = setInterval(updatePrice, position ? 1000 : 2000);
-    setPriceUpdateInterval(interval);
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
+    if (position) {
+      // Update price more frequently when in a position
+      const interval = setInterval(updatePrice, 500);
+      setPriceUpdateInterval(interval);
+      return () => clearInterval(interval);
+    } else if (priceUpdateInterval) {
+      clearInterval(priceUpdateInterval);
+      setPriceUpdateInterval(null);
+    }
   }, [position, updatePrice]);
 
   const addNewCandle = useCallback(() => {
@@ -121,7 +123,13 @@ export function Simulation() {
       close: currentPrice
     };
 
-    chartDataRef.current = [...chartDataRef.current.slice(-99), newCandle];
+    // Only add new candle if the date is different from the last candle
+    if (chartDataRef.current.length > 0) {
+      const lastCandle = chartDataRef.current[chartDataRef.current.length - 1];
+      if (lastCandle.time !== newCandle.time) {
+        chartDataRef.current = [...chartDataRef.current.slice(-89), newCandle];
+      }
+    }
   }, [currentPrice]);
 
   useEffect(() => {

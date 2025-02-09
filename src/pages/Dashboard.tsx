@@ -30,10 +30,13 @@ ChartJS.register(
 
 export function Dashboard() {
   const { user } = useAuth();
+  const [portfolioValue, setPortfolioValue] = React.useState(146000);
+  const [portfolioHistory, setPortfolioHistory] = React.useState<number[]>([]);
+  const [chartLabels, setChartLabels] = React.useState<string[]>([]);
 
   // Mock trading data
   const tradingStats = {
-    currentBalance: 146000,
+    currentBalance: portfolioValue,
     initialBalance: 100000,
     dailyLossLimit: 583.03,
     maxLossRecorded: 77653.03,
@@ -57,13 +60,59 @@ export function Dashboard() {
     }
   };
 
-  // Mock chart data
+  // Initialize portfolio history
+  React.useEffect(() => {
+    const generateHistory = () => {
+      const now = new Date();
+      const labels: string[] = [];
+      const values: number[] = [];
+      let value = tradingStats.initialBalance;
+
+      // Generate 30 days of history
+      for (let i = 30; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+
+        // Generate realistic price movements
+        const change = (Math.random() - 0.45) * value * 0.02; // 2% daily volatility
+        value += change;
+        values.push(Number(value.toFixed(2)));
+      }
+
+      setChartLabels(labels);
+      setPortfolioHistory(values);
+      setPortfolioValue(values[values.length - 1]);
+    };
+
+    generateHistory();
+  }, []);
+
+  // Update portfolio value periodically
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setPortfolioValue(prev => {
+        const change = (Math.random() - 0.45) * prev * 0.001; // 0.1% volatility
+        const newValue = prev + change;
+        
+        setPortfolioHistory(history => {
+          const newHistory = [...history.slice(1), newValue];
+          return newHistory;
+        });
+        
+        return Number(newValue.toFixed(2));
+      });
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   const chartData = {
-    labels: ['May 1', 'May 5', 'May 10', 'May 15', 'May 20', 'May 25', 'May 30'],
+    labels: chartLabels,
     datasets: [
       {
         label: 'Equity',
-        data: [100000, 105000, 102000, 108000, 115000, 112000, 146000],
+        data: portfolioHistory,
         borderColor: 'rgba(239, 68, 68, 1)',
         backgroundColor: 'rgba(239, 68, 68, 0.1)',
         tension: 0.4,
@@ -71,7 +120,7 @@ export function Dashboard() {
       },
       {
         label: 'Balance',
-        data: [100000, 102000, 101000, 106000, 110000, 108000, 142000],
+        data: portfolioHistory.map((value, index) => value * 0.9 + Math.random() * 1000),
         borderColor: 'rgba(59, 130, 246, 1)',
         backgroundColor: 'rgba(59, 130, 246, 0.1)',
         tension: 0.4,
@@ -110,6 +159,37 @@ export function Dashboard() {
       }
     }
   };
+
+  const performanceStats = [
+    {
+      title: 'Total Return',
+      value: `${((portfolioValue - tradingStats.initialBalance) / tradingStats.initialBalance * 100).toFixed(1)}%`,
+      trend: 'up',
+      change: `${((portfolioValue / portfolioHistory[portfolioHistory.length - 2] - 1) * 100).toFixed(1)}%`,
+      period: 'from last month'
+    },
+    {
+      title: 'Win Rate',
+      value: tradingStats.detailStatus.winRate,
+      trend: 'up',
+      change: '+5%',
+      period: 'from last month'
+    },
+    {
+      title: 'Risk/Reward',
+      value: '2.4',
+      trend: 'down',
+      change: '-0.2',
+      period: 'from last month'
+    },
+    {
+      title: 'Sharpe Ratio',
+      value: '1.8',
+      trend: 'up',
+      change: '+0.3',
+      period: 'from last month'
+    }
+  ];
 
   // Mock recommended traders
   const recommendedTraders = [
@@ -264,6 +344,23 @@ export function Dashboard() {
             </div>
             <div className="h-[300px]">
               <Line data={chartData} options={chartOptions} />
+            </div>
+          </div>
+
+          {/* Performance Stats */}
+          <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-xl border border-gray-700/50 mb-8">
+            <h3 className="text-lg font-semibold text-white mb-4">Performance Stats</h3>
+            <div className="grid md:grid-cols-4 gap-6">
+              {performanceStats.map((stat, index) => (
+                <div key={index}>
+                  <div className="text-gray-400 mb-1">{stat.title}</div>
+                  <div className="text-xl font-semibold text-white">{stat.value}</div>
+                  <div className="flex items-center text-sm text-gray-400">
+                    <TrendingUp className="h-4 w-4 mr-1" />
+                    {stat.change} {stat.period}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 

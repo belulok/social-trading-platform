@@ -1,77 +1,77 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { TrendingUp, LogOut, PlayCircle, Shield, Trophy } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export function Navigation() {
-  const location = useLocation();
   const { user, signOut } = useAuth();
-  const isHome = location.pathname === '/';
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   return (
-    <nav className="bg-gray-900/50 backdrop-blur-sm fixed w-full z-10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="flex items-center justify-between">
-          <Link to={user ? '/dashboard' : '/'} className="flex items-center">
-            <TrendingUp className="h-8 w-8 text-red-500" />
-            <span className="ml-2 text-2xl font-bold text-white">HiveTrade</span>
-          </Link>
-          <div className="hidden md:flex items-center space-x-8">
-            {user ? (
-              <>
-                <Link to="/dashboard" className="text-gray-300 hover:text-white transition">
-                  Profile
+    <nav className="fixed top-0 left-0 right-0 bg-gray-800/50 backdrop-blur-sm border-b border-gray-700/50 z-50">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          <div className="flex items-center">
+            <Link to="/" className="text-white font-bold text-xl">
+              Social Trading
+            </Link>
+            {user && (
+              <div className="ml-10 flex items-center space-x-4">
+                <Link
+                  to="/dashboard"
+                  className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Dashboard
                 </Link>
-                <Link to="/trade" className="text-gray-300 hover:text-white transition">
-                  Market
+                <Link
+                  to="/trade"
+                  className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Trade
                 </Link>
-                {/* <Link to="/simulation" className="text-gray-300 hover:text-white transition">
-                  <PlayCircle className="h-4 w-4 inline mr-1" />
-                  Simulation
-                </Link> */}
-                <Link to="/social" className="text-gray-300 hover:text-white transition">
+                <Link
+                  to="/social"
+                  className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+                >
                   Social
                 </Link>
-                <Link to="/leaderboard" className="text-gray-300 hover:text-white transition">
-                  <Trophy className="h-4 w-4 inline mr-1" />
-                  Leaderboard
-                </Link>
-                <Link to="/admin" className="text-gray-300 hover:text-white transition">
-                  <Shield className="h-4 w-4 inline mr-1" />
-                  Admin
-                </Link>
-                <button
-                  onClick={signOut}
-                  className="flex items-center space-x-2 bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>Sign Out</span>
-                </button>
-              </>
-            ) : (
-              isHome ? (
-                <>
-                  <a href="#features" className="text-gray-300 hover:text-white transition">
-                    Features
-                  </a>
-                  <a href="#how-it-works" className="text-gray-300 hover:text-white transition">
-                    How it Works
-                  </a>
-                  <Link
-                    to="/signup"
-                    className="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition"
-                  >
-                    Sign Up
-                  </Link>
-                </>
-              ) : (
                 <Link
-                  to="/"
-                  className="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition"
+                  to="/simulation"
+                  className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
                 >
-                  Sign In
+                  Simulation
                 </Link>
-              )
+              </div>
+            )}
+          </div>
+          <div className="flex items-center">
+            {user ? (
+              <div className="flex items-center space-x-4">
+                <span className="text-gray-300">{user.email}</span>
+                <button
+                  onClick={handleSignOut}
+                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <div className="space-x-4">
+                <Link
+                  to="/signup"
+                  className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+                >
+                  Sign Up
+                </Link>
+              </div>
             )}
           </div>
         </div>
