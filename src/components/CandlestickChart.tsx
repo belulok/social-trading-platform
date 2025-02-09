@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createChart, ColorType, IChartApi, ISeriesApi, LineStyle } from 'lightweight-charts';
 
 interface ChartData {
-  time: string;
+  time: number;
   open?: number;
   high?: number;
   low?: number;
@@ -73,6 +73,24 @@ export const CandlestickChart: React.FC<CandlestickChartProps> = ({
       console.error('Error updating chart data:', error);
     }
   }, [candleData, aiPrediction, trader1, trader2, trader3]);
+
+  useEffect(() => {
+    if (!candleSeriesRef.current || !chartRef.current || !candleData.length) return;
+
+    // Update data and maintain viewport
+    const currentVisibleLogicalRange = chartRef.current.timeScale().getVisibleLogicalRange();
+    candleSeriesRef.current.setData(candleData);
+    
+    // Only auto-scroll if user is viewing the latest candles
+    if (currentVisibleLogicalRange) {
+      const currentRightEdge = currentVisibleLogicalRange.to;
+      const isViewingLatest = currentRightEdge >= candleData.length - 5;
+
+      if (isViewingLatest) {
+        chartRef.current.timeScale().scrollToPosition(0, true);
+      }
+    }
+  }, [candleData]);
 
   useEffect(() => {
     if (!chartContainerRef.current || !chartRef.current) return;

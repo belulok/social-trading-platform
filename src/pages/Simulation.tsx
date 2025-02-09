@@ -20,45 +20,50 @@ interface Trade {
 }
 
 interface ChartData {
-  time: string;
+  time: number;
   open: number;
   high: number;
   low: number;
   close: number;
 }
 
+interface Position {
+  type: 'long' | 'short';
+  entry: number;
+  exit: number | null;
+  size: number;
+  pnl: number;
+  timestamp: Date;
+}
+
 export function Simulation() {
   const [balance, setBalance] = useState(10000);
-  const [position, setPosition] = useState<Trade | null>(null);
-  const [orderSize, setOrderSize] = useState('1000');
+  const [chartData, setChartData] = useState<ChartData[]>([]);
   const [currentPrice, setCurrentPrice] = useState(48235.50);
+  const [orderSize, setOrderSize] = useState('1000');
+  const [position, setPosition] = useState<Position | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [priceUpdateInterval, setPriceUpdateInterval] = useState<NodeJS.Timeout | null>(null);
-  const chartDataRef = useRef<ChartData[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   // Generate initial chart data
-  const generateChartData = () => {
+  const generateInitialChartData = useCallback(() => {
     const data: ChartData[] = [];
-    const now = new Date();
     let price = 48235.50;
 
-    // Generate 90 days of past data
-    for (let i = 90; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-
-      // Generate realistic price movements
+    // Generate 30 minutes of past data
+    for (let i = 0; i < 30; i++) {
       const volatility = Math.max(50, price * 0.02); // 2% volatility
       const change = (Math.random() - 0.5) * volatility;
-      const open = price + change;
-      const high = open + Math.abs(change) * Math.random();
-      const low = open - Math.abs(change) * Math.random();
-      const close = (open + high + low) / 3 + (Math.random() - 0.5) * volatility * 0.5;
+      const open = price;
+      const close = open + change;
+      const high = Math.max(open, close) + Math.abs(change) * Math.random();
+      const low = Math.min(open, close) - Math.abs(change) * Math.random();
 
       data.push({
-        time: date.toISOString().split('T')[0],
+        time: i,
         open: Number(open.toFixed(2)),
         high: Number(high.toFixed(2)),
         low: Number(low.toFixed(2)),
@@ -69,11 +74,15 @@ export function Simulation() {
     }
 
     return data;
-  };
-
-  useEffect(() => {
-    chartDataRef.current = generateChartData();
   }, []);
+
+  // Initialize chart data
+  useEffect(() => {
+    const initialData = generateInitialChartData();
+    setChartData(initialData);
+    setCurrentPrice(initialData[initialData.length - 1].close);
+    setCurrentIndex(initialData.length);
+  }, [generateInitialChartData]);
 
   const updatePrice = useCallback(() => {
     setCurrentPrice(prev => {
@@ -84,27 +93,32 @@ export function Simulation() {
       const change = (Math.random() - bias) * tradeVolatility;
       const newPrice = Number((prev + change).toFixed(2));
 
-      // Update the last candle in chartData
-      if (chartDataRef.current.length > 0) {
-        const lastCandle = chartDataRef.current[chartDataRef.current.length - 1];
-        lastCandle.close = newPrice;
-        lastCandle.high = Math.max(lastCandle.high, newPrice);
-        lastCandle.low = Math.min(lastCandle.low, newPrice);
-      }
+      // Add new candle with incremented index
+      setCurrentIndex(prevIndex => {
+        const newCandle = {
+          time: prevIndex,
+          open: prev,
+          high: Math.max(prev, newPrice),
+          low: Math.min(prev, newPrice),
+          close: newPrice
+        };
+
+        setChartData(prevData => {
+          const newData = [...prevData.slice(1), newCandle];
+          return newData;
+        });
+
+        return prevIndex + 1;
+      });
 
       return newPrice;
     });
   }, [position]);
 
-  // Start fast price updates when position is opened
+  // Update price periodically
   useEffect(() => {
-    if (priceUpdateInterval) {
-      clearInterval(priceUpdateInterval);
-    }
-
     if (position) {
-      // Update price more frequently when in a position
-      const interval = setInterval(updatePrice, 500);
+      const interval = setInterval(updatePrice, 1000);
       setPriceUpdateInterval(interval);
       return () => clearInterval(interval);
     } else if (priceUpdateInterval) {
@@ -124,13 +138,13 @@ export function Simulation() {
     };
 
     // Only add new candle if the date is different from the last candle
-    if (chartDataRef.current.length > 0) {
-      const lastCandle = chartDataRef.current[chartDataRef.current.length - 1];
+    if (chartData.length > 0) {
+      const lastCandle = chartData[chartData.length - 1];
       if (lastCandle.time !== newCandle.time) {
-        chartDataRef.current = [...chartDataRef.current.slice(-89), newCandle];
+        setChartData([...chartData.slice(-29), newCandle]);
       }
     }
-  }, [currentPrice]);
+  }, [currentPrice, chartData]);
 
   useEffect(() => {
     const interval = setInterval(addNewCandle, 60000); 
@@ -269,7 +283,7 @@ export function Simulation() {
             </div>
             <div className="h-[500px]">
               <CandlestickChart 
-                candleData={chartDataRef.current}
+                candleData={chartData}
                 aiPrediction={[]}
                 trader1={[]}
                 trader2={[]}
