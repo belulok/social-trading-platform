@@ -124,47 +124,45 @@ export function CandlestickChart({ getData }: CandlestickChartProps) {
       if (trader3Ref.current) trader3Ref.current.applyOptions({ color: 'rgba(128, 128, 128, 0.5)' });
     });
 
-    // Initial data fetch
-    updateChartData();
+    const updateData = async () => {
+      const data = await getData();
+      
+      if (candleSeriesRef.current && data.historical) {
+        candleSeriesRef.current.setData(data.historical);
+      }
+
+      if (aiPredictionRef.current && data.aiPrediction) {
+        aiPredictionRef.current.setData(data.aiPrediction);
+      }
+
+      if (trader1Ref.current && data.trader1) {
+        trader1Ref.current.setData(data.trader1);
+      }
+
+      if (trader2Ref.current && data.trader2) {
+        trader2Ref.current.setData(data.trader2);
+      }
+
+      if (trader3Ref.current && data.trader3) {
+        trader3Ref.current.setData(data.trader3);
+      }
+
+      if (chartRef.current) {
+        chartRef.current.timeScale().fitContent();
+      }
+    };
+
+    // Initial update
+    updateData();
+
+    // Update every 1 second
+    const interval = setInterval(updateData, 1000);
 
     return () => {
       chart.remove();
+      clearInterval(interval);
     };
-  }, []);
-
-  const updateChartData = async () => {
-    const data = await getData();
-    
-    if (candleSeriesRef.current && data.historical) {
-      candleSeriesRef.current.setData(data.historical);
-    }
-
-    if (aiPredictionRef.current && data.aiPrediction) {
-      aiPredictionRef.current.setData(data.aiPrediction);
-    }
-
-    if (trader1Ref.current && data.trader1) {
-      trader1Ref.current.setData(data.trader1);
-    }
-
-    if (trader2Ref.current && data.trader2) {
-      trader2Ref.current.setData(data.trader2);
-    }
-
-    if (trader3Ref.current && data.trader3) {
-      trader3Ref.current.setData(data.trader3);
-    }
-
-    if (chartRef.current) {
-      chartRef.current.timeScale().fitContent();
-    }
-  };
-
-  // Update data periodically
-  useEffect(() => {
-    const interval = setInterval(updateChartData, 5000); // Update every 5 seconds
-    return () => clearInterval(interval);
-  }, []);
+  }, [getData]);
 
   return <div ref={chartContainerRef} className="w-full h-full" />;
 }

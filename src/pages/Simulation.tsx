@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { CandlestickChart } from '../components/CandlestickChart';
 import { 
   TrendingUp, 
@@ -19,6 +19,14 @@ interface Trade {
   timestamp: Date;
 }
 
+interface ChartData {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
+
 export function Simulation() {
   const [balance, setBalance] = useState(10000);
   const [position, setPosition] = useState<Trade | null>(null);
@@ -27,18 +35,93 @@ export function Simulation() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
+  const [priceUpdateInterval, setPriceUpdateInterval] = useState<NodeJS.Timeout | null>(null);
+  const chartDataRef = useRef<ChartData[]>([]);
 
+  // Generate initial chart data
   useEffect(() => {
-    // Simulate price updates
-    const interval = setInterval(() => {
-      setCurrentPrice(prev => {
-        const change = (Math.random() - 0.5) * 100;
-        return Number((prev + change).toFixed(2));
-      });
-    }, 2000);
-
-    return () => clearInterval(interval);
+    chartDataRef.current = generateChartData();
   }, []);
+
+  const updatePrice = useCallback(() => {
+    setCurrentPrice(prev => {
+      const baseVolatility = 100;
+      const tradeVolatility = position ? 300 : baseVolatility;
+      const bias = position?.type === 'long' ? 0.6 : position?.type === 'short' ? 0.4 : 0.5;
+      
+      const random = Math.random();
+      const change = (random > bias ? 1 : -1) * tradeVolatility * random;
+      const newPrice = Number((prev + change).toFixed(2));
+
+      // Update the latest candle
+      if (chartDataRef.current.length > 0) {
+        const lastCandle = chartDataRef.current[chartDataRef.current.length - 1];
+        lastCandle.close = newPrice;
+        lastCandle.high = Math.max(lastCandle.high!, newPrice);
+        lastCandle.low = Math.min(lastCandle.low!, newPrice);
+      }
+
+      return newPrice;
+    });
+  }, [position]);
+
+  // Start fast price updates when position is opened
+  useEffect(() => {
+    if (priceUpdateInterval) {
+      clearInterval(priceUpdateInterval);
+    }
+
+    const interval = setInterval(updatePrice, position ? 1000 : 2000);
+    setPriceUpdateInterval(interval);
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [position, updatePrice]);
+
+  const generateChartData = () => {
+    const periods = 100;
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    
+    const data = [];
+    for (let i = periods - 1; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      
+      const basePrice = currentPrice * (1 + Math.sin(i * 0.1) * 0.1);
+      const volatility = basePrice * 0.02;
+      
+      data.push({
+        time: date.toISOString().split('T')[0],
+        open: Number((basePrice - volatility * Math.random()).toFixed(2)),
+        high: Number((basePrice + volatility).toFixed(2)),
+        low: Number((basePrice - volatility).toFixed(2)),
+        close: Number((basePrice + volatility * Math.random()).toFixed(2))
+      });
+    }
+
+    return data;
+  };
+
+  // Add new candle every minute
+  useEffect(() => {
+    const addNewCandle = () => {
+      const now = new Date();
+      const newCandle = {
+        time: now.toISOString().split('T')[0],
+        open: currentPrice,
+        high: currentPrice,
+        low: currentPrice,
+        close: currentPrice
+      };
+
+      chartDataRef.current = [...chartDataRef.current.slice(-99), newCandle];
+    };
+
+    const interval = setInterval(addNewCandle, 60000); 
+    return () => clearInterval(interval);
+  }, [currentPrice]);
 
   const showError = (message: string) => {
     setAlertMessage(message);
@@ -90,31 +173,6 @@ export function Simulation() {
         timestamp: new Date()
       });
     }
-  };
-
-  const generateChartData = () => {
-    const periods = 100;
-    const now = new Date();
-    now.setHours(0, 0, 0, 0); // Start at beginning of current day
-    
-    const data = [];
-    for (let i = periods - 1; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      
-      const basePrice = currentPrice * (1 + Math.sin(i * 0.1) * 0.1);
-      const volatility = basePrice * 0.02;
-      
-      data.push({
-        time: date.toISOString().split('T')[0], // Format: YYYY-MM-DD
-        open: Number((basePrice - volatility * Math.random()).toFixed(2)),
-        high: Number((basePrice + volatility).toFixed(2)),
-        low: Number((basePrice - volatility).toFixed(2)),
-        close: Number((basePrice + volatility * Math.random()).toFixed(2))
-      });
-    }
-
-    return data;
   };
 
   // Mock forum discussions data
@@ -200,7 +258,15 @@ export function Simulation() {
               </div>
             </div>
             <div className="h-[600px]">
-              <CandlestickChart data={generateChartData()} />
+              <CandlestickChart getData={async () => {
+                return {
+                  historical: chartDataRef.current,
+                  aiPrediction: chartDataRef.current.map(item => ({ ...item, value: item.close })),
+                  trader1: chartDataRef.current.map(item => ({ ...item, value: item.close * (1 + Math.random() * 0.1) })),
+                  trader2: chartDataRef.current.map(item => ({ ...item, value: item.close * (1 - Math.random() * 0.1) })),
+                  trader3: chartDataRef.current.map(item => ({ ...item, value: item.close * (1 + (Math.random() - 0.5) * 0.1) }))
+                };
+              }} />
             </div>
           </div>
 
