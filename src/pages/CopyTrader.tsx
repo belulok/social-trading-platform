@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Users, Award, TrendingUp, AlertTriangle, History } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
@@ -29,6 +29,7 @@ ChartJS.register(
 
 export function CopyTrader() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
 
   // Scroll to top on mount
@@ -136,10 +137,20 @@ export function CopyTrader() {
           </Link>
           <div className="flex items-start justify-between">
             <div className="flex items-center space-x-6">
-              <img src={trader.avatar} alt={trader.name} className="w-20 h-20 rounded-full" />
+              <img 
+                src={trader.avatar} 
+                alt={trader.name} 
+                className="w-20 h-20 rounded-full cursor-pointer hover:opacity-90 transition"
+                onClick={() => navigate(`/copy-trader/${trader.id}`)}
+              />
               <div>
                 <div className="flex items-center space-x-3">
-                  <h1 className="text-3xl font-bold text-white">{trader.name}</h1>
+                  <h1 
+                    className="text-3xl font-bold text-white hover:text-red-400 transition cursor-pointer"
+                    onClick={() => navigate(`/copy-trader/${trader.id}`)}
+                  >
+                    {trader.name}
+                  </h1>
                   <Award className="h-6 w-6 text-yellow-500" />
                 </div>
                 <div className="flex items-center space-x-4 mt-2 text-gray-400">

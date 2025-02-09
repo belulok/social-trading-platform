@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { CandlestickChart } from '../components/CandlestickChart';
 import StockNews from '../components/StockNews';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 // Mock FAANG stocks data
 const faangStocks = [
@@ -200,6 +200,8 @@ export function Trade() {
     trader2: ChartData[];
     trader3: ChartData[];
   } | null>(null);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Fetch data once when component mounts
@@ -512,7 +514,8 @@ export function Trade() {
                 {activeTab === 'traders' && (
                   <div className="grid grid-cols-2 gap-6">
                     {topTraders.map((trader) => (
-                      <div key={trader.id} className="bg-gray-700/30 rounded-xl p-6 hover:bg-gray-700/50 transition">
+                      <div key={trader.id} className="bg-gray-700/30 rounded-xl p-6 hover:bg-gray-700/50 transition cursor-pointer"
+                           onClick={() => navigate(`/copy-trader/${trader.id}`)}>
                         <div className="flex items-start space-x-4">
                           <img
                             src={trader.avatar}
@@ -521,7 +524,7 @@ export function Trade() {
                           />
                           <div className="flex-1">
                             <div className="flex items-center justify-between">
-                              <h3 className="text-lg font-semibold text-white">{trader.name}</h3>
+                              <h3 className="text-lg font-semibold text-white hover:text-red-400 transition">{trader.name}</h3>
                               <span className="text-green-500">{trader.performance.monthly}</span>
                             </div>
                             <p className="text-gray-400 text-sm mt-1">{trader.description}</p>
@@ -593,13 +596,19 @@ export function Trade() {
                           <img
                             src={discussion.author.avatar}
                             alt={discussion.author.name}
-                            className="w-10 h-10 rounded-full"
+                            className="w-10 h-10 rounded-full cursor-pointer"
+                            onClick={() => navigate(`/copy-trader/${discussion.author.id}`)}
                           />
                           <div className="flex-1">
-                            <div className="flex items-start justify-between">
+                            <div className="flex items-center justify-between">
                               <div>
                                 <div className="flex items-center space-x-2">
-                                  <span className="font-medium text-white">{discussion.author.name}</span>
+                                  <h3 
+                                    className="font-semibold text-white hover:text-red-400 transition cursor-pointer"
+                                    onClick={() => navigate(`/copy-trader/${discussion.author.id}`)}
+                                  >
+                                    {discussion.author.name}
+                                  </h3>
                                   <span className="text-yellow-500">★ {discussion.author.reputation}</span>
                                 </div>
                                 <div className="text-gray-400 text-sm">{discussion.timestamp}</div>
