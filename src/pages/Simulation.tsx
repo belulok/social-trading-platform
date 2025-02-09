@@ -5,6 +5,9 @@ import {
   TrendingDown, 
   DollarSign,
   AlertTriangle,
+  Heart,
+  MessageSquare,
+  Share2
 } from 'lucide-react';
 
 interface Trade {
@@ -113,6 +116,52 @@ export function Simulation() {
 
     return data;
   };
+
+  // Mock forum discussions data
+  const forumDiscussions = [
+    {
+      id: 1,
+      author: {
+        name: 'Sarah Chen',
+        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
+        reputation: 4.8
+      },
+      timestamp: '2 hours ago',
+      title: 'Bitcoin Technical Analysis: Bullish Divergence on 4H',
+      content: 'Spotted a clear bullish RSI divergence on the 4-hour chart. Price making lower lows while RSI shows higher lows. Could be a good entry point for longs.',
+      sentiment: 'bullish',
+      likes: 124,
+      comments: 45
+    },
+    {
+      id: 2,
+      author: {
+        name: 'Michael Rodriguez',
+        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Michael',
+        reputation: 4.5
+      },
+      timestamp: '4 hours ago',
+      title: 'Market Structure Analysis: Key Resistance Levels',
+      content: 'We’re approaching a major resistance zone at $48.5K. Multiple rejections in the past week suggest strong selling pressure. Be cautious with long positions.',
+      sentiment: 'bearish',
+      likes: 89,
+      comments: 32
+    },
+    {
+      id: 3,
+      author: {
+        name: 'Alex Thompson',
+        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex',
+        reputation: 4.2
+      },
+      timestamp: '6 hours ago',
+      title: 'Neutral Stance: Waiting for Clear Direction',
+      content: 'Market seems to be consolidating in a tight range. Volume declining suggests a big move incoming, but direction unclear. Better to wait for confirmation.',
+      sentiment: 'neutral',
+      likes: 67,
+      comments: 28
+    }
+  ];
 
   return (
     <div className="min-h-screen bg-gray-900 pt-20">
@@ -262,6 +311,58 @@ export function Simulation() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Forum Discussions */}
+      <div className="mt-8 flex flex-col items-center">
+        <h2 className="text-2xl font-bold text-white mb-6">Community Discussions</h2>
+        <div className="space-y-4 w-full max-w-4xl">
+          {forumDiscussions.map((discussion) => (
+            <div key={discussion.id} className="bg-gray-800 rounded-xl p-4 hover:bg-gray-700/50 transition">
+              <div className="flex items-start space-x-4">
+                <img
+                  src={discussion.author.avatar}
+                  alt={discussion.author.name}
+                  className="w-8 h-8 rounded-full"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between">
+                    <div className="min-w-0">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-medium text-white truncate">{discussion.author.name}</span>
+                        <span className="text-yellow-500 flex-shrink-0">★ {discussion.author.reputation}</span>
+                      </div>
+                      <div className="text-gray-400 text-xs">{discussion.timestamp}</div>
+                    </div>
+                    <span className={`px-2 py-1 rounded text-xs flex-shrink-0 ${
+                      discussion.sentiment === 'bullish' ? 'bg-green-500/20 text-green-400' :
+                      discussion.sentiment === 'bearish' ? 'bg-red-500/20 text-red-400' :
+                      'bg-yellow-500/20 text-yellow-400'
+                    }`}>
+                      {discussion.sentiment}
+                    </span>
+                  </div>
+                  <h3 className="text-base font-semibold text-white mt-1 truncate">{discussion.title}</h3>
+                  <p className="text-gray-300 text-sm mt-1 line-clamp-2">{discussion.content}</p>
+                  <div className="flex items-center space-x-4 mt-3 text-xs text-gray-400">
+                    <button className="flex items-center space-x-1 hover:text-white transition">
+                      <Heart className="h-3 w-3" />
+                      <span>{discussion.likes}</span>
+                    </button>
+                    <button className="flex items-center space-x-1 hover:text-white transition">
+                      <MessageSquare className="h-3 w-3" />
+                      <span>{discussion.comments} comments</span>
+                    </button>
+                    <button className="flex items-center space-x-1 hover:text-white transition">
+                      <Share2 className="h-3 w-3" />
+                      <span>Share</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

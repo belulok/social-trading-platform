@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { CandlestickChart } from '../components/CandlestickChart';
 import StockNews from '../components/StockNews';
+import { Link } from 'react-router-dom';
 
 // Mock FAANG stocks data
 const faangStocks = [
@@ -377,6 +378,14 @@ export function Trade() {
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
+                <Link to="/simulation">
+                  <button
+                    className="flex items-center space-x-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition"
+                  >
+                    <Bot className="h-5 w-5" />
+                    <span>Simulate</span>
+                  </button>
+                </Link>
                   <select 
                     value={timeframe}
                     onChange={(e) => setTimeframe(e.target.value)}
@@ -389,7 +398,6 @@ export function Trade() {
                     <option value="10Y">10 Years</option>
                   </select>
                   <button
-                    onClick={() => setShowAIAssistant(!showAIAssistant)}
                     className="flex items-center space-x-2 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg transition"
                   >
                     <Bot className="h-5 w-5" />
